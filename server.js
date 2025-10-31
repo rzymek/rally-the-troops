@@ -1605,7 +1605,7 @@ const SQL_SELECT_GAME_TITLE = SQL("SELECT title_id FROM games WHERE game_id=?").
 const SQL_SELECT_PLAYERS = SQL("select * from players join user_view using(user_id) where game_id=?")
 const SQL_SELECT_PLAYERS_WITH_NAME = SQL("select role, user_id, name from players join users using(user_id) where game_id=?")
 const SQL_UPDATE_PLAYER_ACCEPT = SQL("UPDATE players SET is_invite=0 WHERE game_id=? AND role=? AND user_id=?")
-const SQL_UPDATE_PLAYER_ROLE = SQL("UPDATE players SET role=? WHERE game_id=? AND role=? AND user_id=?")
+const SQL_UPDATE_PLAYER_ROLE = SQL("UPDATE players SET role=? WHERE game_id=? AND role=?")
 const SQL_SELECT_PLAYER_NAME = SQL("SELECT name FROM players JOIN users using(user_id) WHERE game_id=? AND role=?").pluck()
 const SQL_INSERT_PLAYER_ROLE = SQL("INSERT OR IGNORE INTO players (game_id,role,user_id,is_invite) VALUES (?,?,?,?)")
 const SQL_DELETE_PLAYER_ROLE = SQL("DELETE FROM players WHERE game_id=? AND role=?")
@@ -2337,7 +2337,7 @@ function assign_random_roles(game, options, players) {
 		let old_role = p.role
 		p.role = pick_random_item(roles)
 		console.log("ASSIGN ROLE", "(" + p.name + ")", old_role, "->", p.role)
-		SQL_UPDATE_PLAYER_ROLE.run(p.role, game.game_id, old_role, p.user_id)
+		SQL_UPDATE_PLAYER_ROLE.run(p.role, game.game_id, old_role)
 	}
 }
 
@@ -3909,6 +3909,27 @@ function send_message(socket, cmd, arg) {
 	socket.send(JSON.stringify([ cmd, arg ]))
 }
 
+function swap_player_roles(socket) {
+	let game = SQL_SELECT_GAME.get(socket.game_id)
+	let roles = get_game_roles(game.title_id, game.scenario, game.options)
+	console.log("PIE RULE", socket.game_id, roles[0], "<->", roles[1])
+	SQL_UPDATE_PLAYER_ROLE.run("PIE0", socket.game_id, roles[0])
+	SQL_UPDATE_PLAYER_ROLE.run("PIE1", socket.game_id, roles[1])
+	SQL_UPDATE_PLAYER_ROLE.run(roles[1], socket.game_id, "PIE0")
+	SQL_UPDATE_PLAYER_ROLE.run(roles[0], socket.game_id, "PIE1")
+	let players = SQL_SELECT_PLAYERS_WITH_NAME.all(socket.game_id)
+	let player_roles = roles.map(r => ({ role: r, name: players.find(p => p.role === r)?.name }))
+	if (game_clients[socket.game_id]) {
+		for (let other of game_clients[socket.game_id]) {
+			if (other.role === roles[0])
+				other.role = roles[1]
+			else if (other.role === roles[1])
+				other.role = roles[0]
+			send_message(other, "pie", [ other.role, player_roles ])
+		}
+	}
+}
+
 function send_state(socket, state) {
 	try {
 		let view = RULES[socket.title_id].view(state, socket.role, false)
@@ -4059,6 +4080,11 @@ function on_action(socket, action, args, cookie) {
 			game_cookies[socket.game_id] ++
 
 		state = RULES[socket.title_id].action(state, socket.role, action, args)
+
+		if (state.$pie) {
+			swap_player_roles(socket)
+			delete state.$pie
+		}
 
 		put_new_state(socket.title_id, socket.game_id, state,
 			old_active,
@@ -4338,7 +4364,7 @@ wss.on("connection", (socket, req) => {
 		if (!game || game.title_id !== socket.title_id)
 			return socket.close(1000, "Invalid game ID.")
 
-		let players = socket.players = SQL_SELECT_PLAYERS_WITH_NAME.all(socket.game_id)
+		let players = SQL_SELECT_PLAYERS_WITH_NAME.all(socket.game_id)
 
 		if (socket.role !== "Observer") {
 			if (!socket.user)

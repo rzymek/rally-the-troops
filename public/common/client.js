@@ -653,6 +653,15 @@ function connect_play() {
 			}
 			break
 
+		case "pie":
+			// new player role assignment!
+			params.role = player = arg[0]
+			search_params.set("role", params.role)
+			window.history.replaceState(null, "", window.location.pathname + "?" + search_params.toString())
+			init_player_names(arg[1])
+			document.body.classList.add(player.replace(/\W/g, "_"))
+			break
+
 		case "presence":
 			for (let role of roles)
 				role.element.classList.toggle("present", arg.includes(role.role))
