@@ -820,6 +820,8 @@ app.post("/account/delete", must_be_logged_in, function (req, res) {
 app.get("/admin/ban-user/:who", must_be_administrator, function (req, res) {
 	let who = SQL_SELECT_USER_ID.get(req.params.who)
 	SQL_UPDATE_USER_IS_BANNED.run(1, who)
+	SQL_UPDATE_USER_NOTIFY.run(0, who)
+	SQL_DELETE_WEBHOOK.run(who)
 	TM_DELETE_QUEUE_USER.run(who)
 	return res.redirect("/user/" + req.params.who)
 })
