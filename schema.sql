@@ -92,11 +92,6 @@ create table if not exists user_timeout (
 
 create index if not exists user_timeout_idx on user_timeout(user_id, time);
 
-create table if not exists user_vacation (
-	user_id integer primary key,
-	vacation integer
-);
-
 create table if not exists user_move_hist (
 	user_id integer,
 	minutes integer,
@@ -1136,7 +1131,6 @@ begin
 	delete from user_about where user_id = old.user_id;
 	delete from user_move_hist where user_id = old.user_id;
 	delete from user_timeout where user_id = old.user_id;
-	delete from user_vacation where user_id = old.user_id;
 	delete from webhooks where user_id = old.user_id;
 	delete from logins where user_id = old.user_id;
 	delete from tokens where user_id = old.user_id;

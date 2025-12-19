@@ -495,7 +495,6 @@ const SQL_SELECT_USER_PROFILE = SQL(`
 	left join user_first_seen using(user_id)
 	left join user_last_seen using(user_id)
 	left join user_about using(user_id)
-	left join user_vacation using(user_id)
 	where name = ?
 `)
 
@@ -712,7 +711,6 @@ app.post("/signup", must_pass_altcha, function (req, res) {
 	let user = SQL_INSERT_USER.get(name, mail)
 	SQL_UPDATE_USER_FIRST_SEEN.run(user.user_id, ip)
 	SQL_UPDATE_USER_PASSWORD.run(user.user_id, hash, salt)
-	SQL_INSERT_USER_VACATION.run(user.user_id, 0)
 	login_insert(res, user.user_id)
 	res.redirect("/account")
 })
@@ -2749,15 +2747,6 @@ function send_chat_activity_notification(game_id, p) {
 	send_play_notification(p, game_id, "Chat activity")
 }
 
-function send_vacation_notification(user, vacation) {
-	var message
-	if (vacation > 0)
-		message = `You have used one vacation day -- ${vacation} left!`
-	else
-		message = `You have used your last vacation day!`
-	send_notification(user, SITE_URL + "/account", message)
-}
-
 function send_game_started_notification(game_id, active) {
 	let players = SQL_SELECT_PLAYERS.all(game_id)
 	for (let p of players) {
@@ -2902,35 +2891,10 @@ setTimeout(purge_game_ticker, 89 * 1000)
  * TIME CONTROL
  */
 
-const SQL_INSERT_USER_VACATION = SQL("insert into user_vacation (user_id,vacation) values (?,?)")
-const SQL_SPEND_USER_VACATION = SQL("update user_vacation set vacation = vacation - 1 where vacation > 0 and user_id = ?")
-
 const SQL_SELECT_TIME_CONTROL = SQL("select * from time_control_view")
 const SQL_SELECT_TIME_CONTROL_DEADLINE = SQL("select * from time_control_deadline_view")
 
 const SQL_INSERT_TIMEOUT = SQL("insert or ignore into user_timeout (user_id, game_id) values (?, ?)")
-
-const SQL_SELECT_VACATION_CONTROL = SQL(`
-	select
-		distinct user_id,
-		name, mail, notify,
-		vacation
-	from
-		time_control_view
-		join users using(user_id)
-		left join user_vacation using(user_id)
-	where
-		is_opposed and coalesce(vacation, 0) > 0
-`)
-
-const SQL_ADD_VACATION_TIME = SQL(`
-	update players
-		set clock = clock + 1
-	where
-		user_id = ? and exists (
-			select 1 from games where games.game_id = players.game_id and status = 1 and is_opposed
-		)
-`)
 
 function terminate_game(game, role, user_id) {
 	var result = get_resign_result(game, role)
@@ -2948,20 +2912,12 @@ function terminate_future_matches(game_id, user_id) {
 }
 
 function time_control_ticker() {
-	var users_on_vacation
 	var games_to_timeout
 	var games_to_deadline
 
 	SQL_BEGIN.run()
 	try {
 		console.log("TIME CONTROL TICKER")
-
-		users_on_vacation = SQL_SELECT_VACATION_CONTROL.all()
-		for (let user of users_on_vacation) {
-			console.log("SPEND VACATION:", JSON.stringify(user))
-			SQL_SPEND_USER_VACATION.run(user.user_id)
-			SQL_ADD_VACATION_TIME.run(user.user_id)
-		}
 
 		games_to_timeout = SQL_SELECT_TIME_CONTROL.all()
 		for (let item of games_to_timeout) {
@@ -2998,10 +2954,6 @@ function time_control_ticker() {
 	} finally {
 		if (db.inTransaction)
 			SQL_ROLLBACK.run()
-	}
-
-	for (let user of users_on_vacation) {
-		send_vacation_notification(user, user.vacation - 1)
 	}
 
 	for (let item of games_to_timeout)

@@ -173,10 +173,8 @@ mixin userstats(who, move_time, timeouts, ratings, tm_banned)
 			if (move_time.q1 !== null && move_time.q2 !== null)
 				div Middle half of move times: #{format_minutes(move_time.q1)} to #{format_minutes(move_time.q3)}
 
-		if who.vacation || timeouts.timeout_total || tm_banned
+		if timeouts.timeout_total || tm_banned
 			h3 Timeouts
-		if who.vacation
-			div Vacation days remaining: #{who.vacation}
 		if timeouts.timeout_total
 			div Total number of timeouts: #{timeouts.timeout_total}
 			div Games completed since last timeout: #{timeouts.games_since_timeout}

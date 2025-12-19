@@ -19,12 +19,6 @@ much time you can accumulate.
 <dd> 72h +36h/move up to 240h
 </dl>
 
-## Vacation
-
-Every player has 5 vacation days per year.
-If a player exceeds the time limit in a game, one vacation days is used up to add 24 hours on the clock to all their games.
-When the vacation has run out, the games will be lost instead.
-
 ## Tournament Timeouts
 
 Timing out in a tournament is very bad!
