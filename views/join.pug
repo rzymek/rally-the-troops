@@ -22,6 +22,7 @@ html
 			let game = !{ JSON.stringify(game) }
 			let players = !{ JSON.stringify(players) }
 			let roles = !{ JSON.stringify(roles) }
+			let is_moderator = !{ !!(user && user.is_moderator) }
 			let user_id = !{ user ? user.user_id : 0 }
 			let blacklist = !{ JSON.stringify(blacklist) }
 			let friends = !{ JSON.stringify(friends) }
@@ -67,12 +68,12 @@ html
 					button(onclick="send_invite()") Invite
 					button(onclick="hide_invite()") Cancel
 
-			if user && user.user_id === 1
-				hr
-				div: p
+			if game.status > 0 && user.is_admin
+				fieldset.mod
+					legend ADMIN
 					each snap in rewind
-						<a href="/api/rewind/#{game.game_id}/#{snap.snap_id}">REWIND #{snap.snap_id}</a> - #{snap.state} - #{snap.active}
-						br
+						div
+							<a class="mod" href="/api/rewind/#{game.game_id}/#{snap.snap_id}">REWIND #{snap.snap_id}</a> - #{snap.state} - #{snap.active}
 					if DEBUG
-						<a href="/api/clone/#{game.game_id}">CLONE</a>
-						br
+						div
+							<a class="mod" href="/api/clone/#{game.game_id}">CLONE</a>

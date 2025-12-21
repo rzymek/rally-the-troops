@@ -151,9 +151,9 @@ if (process.env.MAIL_HOST && process.env.MAIL_PORT && process.env.MAIL_FROM) {
 const COOKIE = (process.env.COOKIE || "login") + "="
 
 const login_sql_select = SQL("select user_id from logins where sid = ? and expires > julianday()").pluck()
-const login_sql_insert = SQL("insert into logins values (abs(random()) % (1<<48), ?, julianday() + 28) returning sid").pluck()
+const login_sql_insert = SQL("insert into logins(sid,user_id,ip,expires) values (abs(random()) % (1<<48), ?, ?, julianday() + 28) returning sid").pluck()
 const login_sql_delete = SQL("delete from logins where sid = ?")
-const login_sql_touch = SQL("update logins set expires = julianday() + 28 where sid = ? and expires < julianday() + 27")
+const login_sql_touch = SQL("update logins set expires = julianday() + 28, ip = ? where sid = ? and expires < julianday() + 27")
 
 function make_cookie(sid, age) {
 	return `${COOKIE}${sid}; Path=/; Max-Age=${age}; HttpOnly`
@@ -169,13 +169,13 @@ function login_cookie(req) {
 	return 0
 }
 
-function login_insert(res, user_id) {
-	let sid = login_sql_insert.get(user_id)
+function login_insert(res, user_id, ip) {
+	var sid = login_sql_insert.get(user_id, ip)
 	res.setHeader("Set-Cookie", make_cookie(sid, 2419200))
 }
 
-function login_touch(res, sid) {
-	if (login_sql_touch.run(sid).changes === 1)
+function login_touch(res, sid, ip) {
+	if (login_sql_touch.run(ip, sid).changes === 1)
 		res.setHeader("Set-Cookie", make_cookie(sid, 2419200))
 }
 
@@ -465,8 +465,8 @@ const SQL_SELECT_LOGIN = SQL("SELECT * FROM user_login_view WHERE user_id=?")
 const SQL_SELECT_LOGIN_BY_MAIL = SQL("SELECT * FROM user_login_view WHERE mail=?")
 const SQL_SELECT_LOGIN_BY_NAME = SQL("SELECT * FROM user_login_view WHERE name=?")
 
-const SQL_SELECT_USER_VIEW = SQL("SELECT * FROM user_view WHERE user_id=?")
 const SQL_SELECT_USER_BY_NAME = SQL("SELECT * FROM user_view WHERE name=?")
+const SQL_SELECT_USER_FOR_PLAY = SQL("select user_id, name, is_moderator from users where user_id=?")
 const SQL_SELECT_USER_DYNAMIC = SQL("select * from user_dynamic_view where user_id=?")
 const SQL_SELECT_USER_ID = SQL("SELECT user_id FROM users WHERE name=?").pluck()
 const SQL_SELECT_USER_BY_SEARCH = SQL("select name, atime from users left join user_last_seen using(user_id) where name like ? order by name")
@@ -549,7 +549,7 @@ const SQL_UPDATE_WEBHOOK_SUCCESS = SQL("UPDATE webhooks SET error=null WHERE use
 const SQL_DELETE_WEBHOOK = SQL("DELETE FROM webhooks WHERE user_id=?")
 
 const SQL_FIND_TOKEN = SQL("SELECT token FROM tokens WHERE user_id=? AND julianday('now') < julianday(time, '+5 minutes')").pluck()
-const SQL_CREATE_TOKEN = SQL("INSERT OR REPLACE INTO tokens (user_id,token,time) VALUES (?, lower(hex(randomblob(16))), datetime()) RETURNING token").pluck()
+const SQL_CREATE_TOKEN = SQL("INSERT OR REPLACE INTO tokens (user_id,token,time) VALUES (?, hex(randomblob(8)), datetime()) RETURNING token").pluck()
 const SQL_VERIFY_TOKEN = SQL("SELECT EXISTS ( SELECT 1 FROM tokens WHERE user_id=? AND julianday('now') < julianday(time, '+20 minutes') AND token=? )").pluck()
 
 app.use(function (req, res, next) {
@@ -560,11 +560,13 @@ app.use(function (req, res, next) {
 	if (sid) {
 		let user_id = login_sql_select.get(sid)
 		if (user_id) {
-			login_touch(res, sid)
+			login_touch(res, sid, ip)
 			req.user = res.locals.user = SQL_SELECT_USER_DYNAMIC.get(user_id)
 			SQL_UPDATE_USER_LAST_SEEN.run(user_id, ip)
 			if (req.user.is_banned)
-				return res.send("")
+				return res.status(403).send("You have been banished!")
+			if (req.user.is_admin)
+				req.user.is_moderator = 1
 		}
 	}
 
@@ -579,30 +581,32 @@ app.use(function (req, res, next) {
 
 function must_be_logged_in(req, res, next) {
 	if (!req.user)
-		return res.redirect("/login?redirect=" + encodeURIComponent(req.originalUrl))
+		return res.redirect("/login")
 	return next()
 }
 
 function must_be_verified(req, res, next) {
 	if (!req.user)
-		return res.redirect("/login?redirect=" + encodeURIComponent(req.originalUrl))
+		return res.redirect("/login")
 	if (!SQL_SELECT_USER_VERIFIED.get(req.user.user_id))
 		return res.redirect("/account/mail/verify")
 	return next()
 }
 
 function must_be_administrator(req, res, next) {
-	if (!req.user || req.user.user_id !== 1)
+	if (!req.user || !req.user.is_admin)
+		return res.status(401).send("Not authorized")
+	return next()
+}
+
+function must_be_moderator(req, res, next) {
+	if (!req.user || !req.user.is_moderator)
 		return res.status(401).send("Not authorized")
 	return next()
 }
 
 app.get("/", function (req, res) {
 	res.render("index.pug")
-})
-
-app.get("/create", function (req, res) {
-	res.render("create_index.pug")
 })
 
 app.get("/about", function (req, res) {
@@ -618,14 +622,13 @@ app.post("/logout", function (req, res) {
 
 app.get("/login", function (req, res) {
 	if (req.user)
-		return res.redirect("/")
-	res.render("login.pug", { redirect: req.query.redirect })
+		return res.redirect("/account")
+	res.render("login.pug")
 })
 
 app.post("/login", must_pass_altcha, function (req, res) {
 	let name_or_mail = req.body.username
 	let password = req.body.password
-	let redirect = req.body.redirect
 	if (!is_valid_email(name_or_mail))
 		name_or_mail = clean_user_name(name_or_mail)
 	let user = SQL_SELECT_LOGIN_BY_NAME.get(name_or_mail)
@@ -634,7 +637,7 @@ app.post("/login", must_pass_altcha, function (req, res) {
 	if (!user || is_forbidden_mail(user.mail) || hash_password(password, user.salt) != user.password)
 		return setTimeout(() => res.render("login.pug", { flash: "Invalid login." }), 1000)
 	login_insert(res, user.user_id)
-	res.redirect(redirect || "/account")
+	res.redirect("/account")
 })
 
 app.get("/signup", function (req, res) {
@@ -673,6 +676,8 @@ app.post("/signup", must_pass_altcha, function (req, res) {
 	login_insert(res, user.user_id)
 	res.redirect("/account")
 })
+
+/* ACCOUNT */
 
 app.get("/account/mail/verify", must_be_logged_in, function (req, res) {
 	if (SQL_SELECT_USER_VERIFIED.get(req.user.user_id))
@@ -741,7 +746,8 @@ app.post("/account/password/reset", function (req, res) {
 	let hash = hash_password(password, salt)
 	SQL_UPDATE_USER_PASSWORD.run(user.user_id, hash, salt)
 	SQL_UPDATE_USER_VERIFIED.run(1, user.user_id)
-	login_insert(res, user.user_id)
+	var ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
+	login_insert(res, user.user_id, ip)
 	return res.redirect("/account")
 })
 
@@ -828,7 +834,7 @@ const SQL_SELECT_ADMIN_TIMEOUTS = SQL(`
 	order by time desc
 `)
 
-app.get("/admin/timeouts", must_be_administrator, function (req, res) {
+app.get("/admin/timeouts", must_be_moderator, function (req, res) {
 	let timeouts = SQL_SELECT_ADMIN_TIMEOUTS.all()
 	return res.render("admin_timeouts.pug", { timeouts })
 })
@@ -836,6 +842,19 @@ app.get("/admin/timeouts", must_be_administrator, function (req, res) {
 /*
  * USER PROFILE
  */
+
+app.get("/account", must_be_logged_in, function (req, res) {
+	var who = SQL_SELECT_USER_PROFILE.get(req.user.name)
+	var move_time = SQL_SELECT_USER_MOVE_TIME.get(who.user_id)
+	var timeouts = SQL_SELECT_USER_TIMEOUTS.get(who.user_id)
+	var mail = {
+		notify: SQL_SELECT_USER_NOTIFY.get(req.user.user_id),
+		is_verified: SQL_SELECT_USER_VERIFIED.get(req.user.user_id)
+	}
+	var webhook = SQL_SELECT_WEBHOOK.get(req.user.user_id)
+	var ratings = SQL_USER_RATINGS.all(req.user.user_id)
+	res.render("account_index.pug", { who, move_time, timeouts, mail, webhook, ratings })
+})
 
 app.get("/account/mail/subscribe", must_be_verified, function (req, res) {
 	SQL_UPDATE_USER_NOTIFY.run(1, req.user.user_id)
@@ -913,7 +932,7 @@ app.post("/account/change-about", must_be_logged_in, function (req, res) {
 	return res.redirect("/account")
 })
 
-app.get("/user/:who_name", function (req, res) {
+app.get("/user/:who_name", must_be_logged_in, function (req, res) {
 	let who = SQL_SELECT_USER_PROFILE.get(req.params.who_name)
 	if (who) {
 		let move_time = SQL_SELECT_USER_MOVE_TIME.get(who.user_id)
@@ -1178,6 +1197,10 @@ const FORUM_MARK_READ = SQL("insert or ignore into read_threads (user_id,thread_
 const FORUM_DELETE_THREAD = SQL("delete from threads where thread_id=?")
 const FORUM_DELETE_POST = SQL("delete from posts where post_id=? returning thread_id").pluck()
 
+const FORUM_LOCK_THREAD = SQL("update threads set is_locked=true where thread_id=?")
+const FORUM_HIDE_THREAD = SQL("update threads set is_locked=true, is_hidden=true where thread_id=?")
+const FORUM_HIDE_POST = SQL("update posts set is_hidden=true where post_id=? returning thread_id").pluck()
+
 const FORUM_SEARCH = SQL(`
 	select
 		forum_search.thread_id,
@@ -1247,6 +1270,24 @@ app.get("/forum/thread/:thread_id", function (req, res) {
 		thread: thread,
 		posts: posts,
 	})
+})
+
+app.get("/forum/lock-thread/:thread_id", must_be_moderator, function (req, res) {
+	let thread_id = req.params.thread_id
+	FORUM_LOCK_THREAD.run(thread_id)
+	res.redirect("/forum/thread/" + thread_id)
+})
+
+app.get("/forum/hide-thread/:thread_id", must_be_moderator, function (req, res) {
+	let thread_id = req.params.thread_id
+	FORUM_HIDE_THREAD.run(thread_id)
+	res.redirect("/forum/thread/" + thread_id)
+})
+
+app.get("/forum/hide-post/:post_id", must_be_moderator, function (req, res) {
+	let post_id = req.params.post_id
+	let thread_id = FORUM_HIDE_POST.get(post_id)
+	res.redirect("/forum/thread/" + thread_id)
 })
 
 app.get("/forum/delete-thread/:thread_id", must_be_administrator, function (req, res) {
@@ -1524,6 +1565,8 @@ const SQL_SELECT_UNREAD_CHAT = SQL("select exists (select 1 from unread_chats wh
 const SQL_INSERT_UNREAD_CHAT = SQL("insert or ignore into unread_chats (user_id,game_id) values (?,?)")
 const SQL_DELETE_UNREAD_CHAT = SQL("delete from unread_chats where user_id = ? and game_id = ?")
 
+const SQL_SELECT_MODERATOR_CHAT = SQL("select exists (select 1 from game_chat where game_id = ?)").pluck()
+
 const SQL_SELECT_UNSEEN_GAME_LIST = SQL("select game_id from unseen_games where user_id = ?").pluck()
 const SQL_INSERT_UNSEEN_GAME = SQL("insert or ignore into unseen_games (user_id,game_id) values (?,?)")
 const SQL_DELETE_UNSEEN_GAME = SQL("delete from unseen_games where user_id = ? and game_id = ?")
@@ -1721,6 +1764,8 @@ function check_create_game_limit(user) {
 	var limit = check_join_game_limit(user, 1)
 	if (limit)
 		return limit
+	if (user.waiting >= LIMIT_WAITING_GAMES)
+		return "You have too many games waiting!"
 	if (SQL_COUNT_OPEN_GAMES.get(user.user_id) >= LIMIT_OPEN_GAMES)
 		return "You have too many open games!"
 	return null
@@ -1816,23 +1861,11 @@ function annotate_games(list, user_id, unread, unseen) {
 	return list
 }
 
-// compatibility redirects
-app.get("/profile", function (req, res) { res.redirect(301, "/account") })
-
-app.get("/account", must_be_logged_in, function (req, res) {
-	var who = SQL_SELECT_USER_PROFILE.get(req.user.name)
-	var move_time = SQL_SELECT_USER_MOVE_TIME.get(who.user_id)
-	var timeouts = SQL_SELECT_USER_TIMEOUTS.get(who.user_id)
-	var mail = {
-		notify: SQL_SELECT_USER_NOTIFY.get(req.user.user_id),
-		is_verified: SQL_SELECT_USER_VERIFIED.get(req.user.user_id)
-	}
-	var webhook = SQL_SELECT_WEBHOOK.get(req.user.user_id)
-	var ratings = SQL_USER_RATINGS.all(req.user.user_id)
-	res.render("account_index.pug", { who, move_time, timeouts, mail, webhook, ratings })
+app.get("/create", must_be_logged_in, function (req, res) {
+	res.render("create_index.pug")
 })
 
-app.get("/games", function (_req, res) {
+app.get("/games", must_be_logged_in, function (_req, res) {
 	res.redirect("/games/public")
 })
 
@@ -1881,7 +1914,7 @@ app.get("/tm/finished", must_be_logged_in, function (req, res) {
 	res.render("tm_finished.pug", { who: req.user, pools })
 })
 
-app.get("/games/finished/:who_name", function (req, res) {
+app.get("/games/finished/:who_name", must_be_logged_in, function (req, res) {
 	let who = SQL_SELECT_USER_BY_NAME.get(req.params.who_name)
 	if (who) {
 		let games = QUERY_LIST_FINISHED_GAMES_OF_USER.all({ user_id: who.user_id })
@@ -1892,7 +1925,7 @@ app.get("/games/finished/:who_name", function (req, res) {
 	}
 })
 
-app.get("/tm/finished/:who_name", function (req, res) {
+app.get("/tm/finished/:who_name", must_be_logged_in, function (req, res) {
 	let who = SQL_SELECT_USER_BY_NAME.get(req.params.who_name)
 	if (who) {
 		let pools = TM_POOL_LIST_USER_ALL_FINISHED.all(who.user_id)
@@ -1902,7 +1935,7 @@ app.get("/tm/finished/:who_name", function (req, res) {
 	}
 })
 
-app.get("/games/public", function (req, res) {
+app.get("/games/public", must_be_logged_in, function (req, res) {
 	let user_id = 0
 	let unread = null
 	let unseen = null
@@ -1968,7 +2001,7 @@ function get_title_page(req, res, title_id) {
 for (let title of TITLE_LIST)
 	app.get("/" + title.title_id, (req, res) => get_title_page(req, res, title.title_id))
 
-app.get("/create/:title_id", function (req, res) {
+app.get("/create/:title_id", must_be_logged_in, function (req, res) {
 	let title_id = req.params.title_id
 	let title = TITLE_TABLE[title_id]
 	if (!title)
@@ -2135,7 +2168,7 @@ app.post("/rematch/:old_game_id", must_be_logged_in, function (req, res) {
 	return res.redirect("/join/" + new_game_id)
 })
 
-app.get("/join/:game_id", function (req, res) {
+app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let game = SQL_SELECT_GAME_VIEW.get(game_id)
 	if (!game)
@@ -2341,7 +2374,7 @@ function start_game(game) {
 	send_game_started_notification(game.game_id, state.active)
 }
 
-app.get("/api/replay/:game_id", function (req, res) {
+app.get("/api/replay/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let game = SQL_SELECT_GAME.get(game_id)
 	if (!game)
@@ -2355,7 +2388,7 @@ app.get("/api/replay/:game_id", function (req, res) {
 	return res.type("application/json").send(SQL_SELECT_REPLAY.get(game_id))
 })
 
-app.get("/api/export/:game_id", function (req, res) {
+app.get("/api/export/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let game = SQL_SELECT_GAME.get(game_id)
 	if (!game)
@@ -2403,7 +2436,7 @@ const SQL_SELECT_REWIND_ONCE_2 = SQL("select max(snap_id) from game_snap where g
 
 app.post("/api/rewind/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
-	if (!SQL_SELECT_REWIND_AUTH.get(game_id, req.user.user_id))
+	if (!req.user.is_moderator && !SQL_SELECT_REWIND_AUTH.get(game_id, req.user.user_id))
 		return res.send("Not authorized to rewind that game ID.")
 	let replay_id = SQL_SELECT_REWIND_ONCE_1.get(game_id)
 	if (replay_id) {
@@ -3395,17 +3428,17 @@ const TM_SELECT_SEED_READY_MINI_CUP = SQL(`
 		count(1) >= pool_size
 `)
 
-app.get("/tm/list", function (req, res) {
+app.get("/tm/list", must_be_logged_in, function (req, res) {
 	let seeds = req.user ? TM_SEED_LIST_ALL_WITH_TICKETS.all(req.user.user_id) : TM_SEED_LIST_ALL.all()
 	res.render("tm_list.pug", { seeds })
 })
 
-app.get("/tm/stats", function (req, res) {
+app.get("/tm/stats", must_be_logged_in, function (req, res) {
 	let seeds = TM_SEED_STATS.all()
 	res.render("tm_stats.pug", { seeds })
 })
 
-app.get("/tm/seed/:seed_name", function (req, res) {
+app.get("/tm/seed/:seed_name", must_be_logged_in, function (req, res) {
 	let seed_name = req.params.seed_name
 	let seed = TM_SELECT_SEED_BY_NAME.get(seed_name)
 	if (!seed)
@@ -3429,7 +3462,7 @@ app.get("/tm/seed/:seed_name", function (req, res) {
 	res.render("tm_seed.pug", { error, may_register, seed, queues, active_pools, finished_pools })
 })
 
-app.get("/tm/pool/:pool_name", function (req, res) {
+app.get("/tm/pool/:pool_name", must_be_logged_in, function (req, res) {
 	let pool_name = req.params.pool_name
 	let pool = TM_SELECT_POOL_BY_NAME.get(pool_name)
 	if (!pool)
@@ -4154,6 +4187,19 @@ function on_putnote(socket, note) {
 	}
 }
 
+function on_getchat_observer(socket, seen) {
+	try {
+		let chat = SQL_SELECT_GAME_CHAT.all(socket.game_id, seen)
+		if (chat.length > 0)
+			SLOG(socket, "GETCHAT", seen, chat.length)
+		for (let i = 0; i < chat.length; ++i)
+			send_message(socket, "chat", chat[i])
+	} catch (err) {
+		console.log(err)
+		return send_message(socket, "error", err.toString())
+	}
+}
+
 function on_getchat(socket, seen) {
 	try {
 		let chat = SQL_SELECT_GAME_CHAT.all(socket.game_id, seen)
@@ -4265,6 +4311,10 @@ function handle_player_message(socket, cmd, arg) {
 
 function handle_observer_message(socket, cmd, arg) {
 	switch (cmd) {
+	case "getchat":
+		if (socket.user.is_moderator)
+			on_getchat_observer(socket, arg)
+		break
 	case "getsnap":
 		on_snap(socket, arg)
 		break
@@ -4293,8 +4343,10 @@ wss.on("connection", (socket, req) => {
 	if (sid)
 		user_id = login_sql_select.get(sid)
 	if (user_id) {
-		socket.user = SQL_SELECT_USER_VIEW.get(user_id)
+		socket.user = SQL_SELECT_USER_FOR_PLAY.get(user_id)
 		SQL_UPDATE_USER_LAST_SEEN.run(user_id, ip)
+	} else {
+		return socket.close(1000, "You are not logged in!")
 	}
 
 	socket.ip = ip
@@ -4313,17 +4365,8 @@ wss.on("connection", (socket, req) => {
 		let players = SQL_SELECT_PLAYERS_WITH_NAME.all(socket.game_id)
 
 		if (socket.role !== "Observer") {
-			if (!socket.user)
-				return socket.close(1000, "You are not logged in!")
-
 			if (!players.find(p => p.user_id === socket.user.user_id && p.role === socket.role))
 				return socket.close(1000, "You aren't assigned that role!")
-
-			let new_chat = SQL_SELECT_UNREAD_CHAT.get(socket.user.user_id, socket.game_id)
-			send_message(socket, "newchat", new_chat)
-
-			if (game.status === 2)
-				SQL_DELETE_UNSEEN_GAME.run(user_id, socket.game_id)
 		}
 
 		let state = get_game_state(socket.game_id)
@@ -4341,6 +4384,21 @@ wss.on("connection", (socket, req) => {
 			if (note) {
 				send_message(socket, "note", note)
 			}
+		}
+
+		if (socket.role !== "Observer") {
+			send_message(socket, "newchat",
+				SQL_SELECT_UNREAD_CHAT.get(socket.user.user_id, socket.game_id)
+			)
+
+			if (game.status === 2)
+				SQL_DELETE_UNSEEN_GAME.run(user_id, socket.game_id)
+		}
+
+		if (socket.role === "Observer" && socket.user.is_moderator) {
+			send_message(socket, "newchat",
+				SQL_SELECT_MODERATOR_CHAT.get(socket.game_id)
+			)
 		}
 
 		if (game_clients[socket.game_id]) {
@@ -4512,7 +4570,7 @@ const SQL_TOP_ACTIVE = SQL(`
 	limit 10
 `)
 
-app.get("/stats", function (req, res) {
+app.get("/stats", must_be_logged_in, function (req, res) {
 	let stats = SQL_GAME_STATS.all()
 	let top_finished = SQL_TOP_FINISHED.all()
 	let top_recent = SQL_TOP_RECENT.all()

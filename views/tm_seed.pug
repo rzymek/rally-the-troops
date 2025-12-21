@@ -80,7 +80,7 @@ html
 								button(disabled) Register
 								button(disabled) Withdraw
 
-						if user.user_id === 1
+						if user.is_admin
 							if queue.length >= seed.pool_size
 								form(method="post" action="/tm/start/" + seed.seed_id + "/" + (ix+1))
 									button(type="submit") Start

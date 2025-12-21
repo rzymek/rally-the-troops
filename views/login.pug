@@ -15,12 +15,7 @@ html
 			if user
 				p You're already logged in!
 			else
-				if redirect
-					p You need to be logged in to view this page!
-					p Log in below, or <a href="/signup">sign up</a> for a free account.
-
 				form(method="post")
-					input(type="hidden" name="redirect" value=redirect)
 					p
 						label Name or mail:
 							br

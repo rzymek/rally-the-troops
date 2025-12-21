@@ -8,6 +8,7 @@ block head
 			td:nth-child(2) { display: none }
 			th:nth-child(2) { display: none }
 		}
+		tr.removed { background-color: pink !important }
 
 block body
 	h1 Forum
@@ -20,17 +21,18 @@ block body
 				th.n
 		tbody
 			each row in threads
-				tr(class=(row.is_read?"unread":""))
-					td
-						if row.is_read
-							a.black(href="/forum/thread/"+row.thread_id)
-								div= row.subject
-						else
-							a.black(href="/forum/thread/"+row.thread_id)
-								div
-									b= "\xbb " + row.subject
-					td.r= row.count
-					td.w= human_date(row.mtime)
+				if !row.is_hidden || user.is_moderator
+					tr(class=(row.is_hidden?"removed":row.is_locked?"locked":!row.is_read?"unread":""))
+						td
+							if row.is_read
+								a.black(href="/forum/thread/"+row.thread_id)
+									div= row.subject
+							else
+								a.black(href="/forum/thread/"+row.thread_id)
+									div
+										b= "\xbb " + row.subject
+						td.r= row.count
+						td.w= human_date(row.mtime)
 		tfoot
 			tr
 				td(colspan=4)
@@ -51,5 +53,6 @@ block body
 		form(method="get" action="/forum/search")
 			input(type="text" name="q" size=40 maxlength=80 placeholder="Search..." required)
 
-	p
-		a(href="/forum/post") New thread
+	if !user.is_muted
+		p
+			a(href="/forum/post") New thread

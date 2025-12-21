@@ -80,7 +80,7 @@ html
 			if ENABLE_TOURNAMENTS
 				p <a href="/tm/finished/#{who.name}">All #{who.name}'s finished tournaments</a>
 
-			if user && user.user_id === 1
+			if user && user.is_moderator
 				if who.is_banned
 					p <a href="/admin/unban-user/#{who.name}">UNBAN USER</a>
 				else

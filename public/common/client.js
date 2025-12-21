@@ -213,16 +213,20 @@ function init_chat() {
 		}
 	})
 
-	document.getElementById("chat_form").addEventListener("submit", e => {
-		let input = document.getElementById("chat_input")
-		e.preventDefault()
-		if (input.value) {
-			send_message("chat", input.value)
-			input.value = ""
-		} else {
-			hide_chat()
-		}
-	})
+	if (player !== "Observer") {
+		document.getElementById("chat_form").addEventListener("submit", e => {
+			let input = document.getElementById("chat_input")
+			e.preventDefault()
+			if (input.value) {
+				send_message("chat", input.value)
+				input.value = ""
+			} else {
+				hide_chat()
+			}
+		})
+	} else {
+		document.getElementById("chat_input").disabled = true
+	}
 
 	document.body.addEventListener("keydown", e => {
 		if (e.key === "Escape") {

@@ -291,7 +291,7 @@ mixin userstats(who, move_time, timeouts, ratings)
 						th Title
 						th Total
 						th Last
-						if user && user.user_id === 1
+						if user.is_moderator
 							th Elo
 				tbody
 					each row in ratings
@@ -300,5 +300,5 @@ mixin userstats(who, move_time, timeouts, ratings)
 								a.black(href="/" + row.title_id)= row.title_name
 							td.r= row.count
 							td.r= row.last
-							if user && user.user_id === 1
+							if user.is_moderator
 								td.r= row.rating

@@ -29,6 +29,7 @@ create table if not exists titles (
 create table if not exists logins (
 	sid integer primary key,
 	user_id integer,
+	ip text,
 	expires real -- julianday
 );
 
@@ -38,7 +39,8 @@ create table if not exists users (
 	mail text unique collate nocase,
 	notify integer default 0,
 	is_verified boolean default 0,
-	is_banned boolean default 0
+	is_banned boolean default 0,
+	is_moderator boolean default 0
 );
 
 insert or ignore into
@@ -92,7 +94,7 @@ create table if not exists user_move_hist (
 
 create table if not exists tokens (
 	user_id integer primary key,
-	token text,
+	token text collate nocase,
 	time datetime
 );
 
@@ -204,6 +206,8 @@ create view user_dynamic_view as
 			select count(1) from unseen_games where user_id = users.user_id
 		)
 		as waiting,
+		user_id = 1 as is_admin,
+		is_moderator,
 		is_banned
 	from
 		users
@@ -338,7 +342,8 @@ create table if not exists threads (
 	thread_id integer primary key,
 	author_id integer,
 	subject text,
-	is_locked boolean default 0
+	is_locked boolean default 0,
+	is_hidden boolean default 0
 );
 
 create table if not exists posts (
@@ -347,7 +352,9 @@ create table if not exists posts (
 	author_id integer,
 	ctime datetime default current_timestamp,
 	mtime datetime default current_timestamp,
-	body text
+	body text,
+	in_reply_to integer default 0,
+	is_hidden boolean default 0
 );
 
 create table if not exists read_threads (
@@ -1176,10 +1183,16 @@ begin
 end;
 
 drop trigger if exists trigger_search_update_thread;
-create trigger trigger_search_update_thread after update on threads
+create trigger trigger_search_update_thread after update on threads when not new.is_hidden
 begin
 	delete from forum_search where thread_id=old.thread_id and post_id=0;
 	insert into forum_search(thread_id, post_id, text) values(new.thread_id, 0, new.subject);
+end;
+
+drop trigger if exists trigger_search_hide_thread;
+create trigger trigger_search_hide_thread after update on threads when new.is_hidden
+begin
+	delete from forum_search where thread_id=old.thread_id;
 end;
 
 drop trigger if exists trigger_search_delete_thread;
@@ -1195,10 +1208,16 @@ begin
 end;
 
 drop trigger if exists trigger_search_update_post;
-create trigger trigger_search_update_post after update on posts
+create trigger trigger_search_update_post after update on posts when not new.is_hidden
 begin
 	delete from forum_search where post_id=old.post_id;
 	insert into forum_search(thread_id, post_id, text) values(new.thread_id, new.post_id, new.body);
+end;
+
+drop trigger if exists trigger_search_hide_post;
+create trigger trigger_search_hide_post after update on posts when new.is_hidden
+begin
+	delete from forum_search where post_id=old.post_id;
 end;
 
 drop trigger if exists trigger_search_delete_post;

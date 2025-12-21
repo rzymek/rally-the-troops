@@ -92,7 +92,11 @@ function may_delete() {
 }
 
 function may_rewind() {
-	if (game.owner_id !== user_id || game.is_match || game.status !== 1)
+	if (game.status === 0 || game.status === 3)
+		return false
+	if (is_moderator)
+		return true
+	if (game.owner_id !== user_id || game.is_match)
 		return false
 	if (!game.is_private)
 		return false
