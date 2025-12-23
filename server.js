@@ -1776,10 +1776,10 @@ function check_join_game_limit(user, n) {
 	if (user.waiting >= LIMIT_WAITING_GAMES + 1)
 		return "You have too many games waiting!"
 	var finished = SQL_COUNT_FINISHED_GAMES.get(user.user_id)
-	var active = SQL_COUNT_OPEN_GAMES.get(user.user_id)
-	active += SQL_COUNT_ACTIVE_GAMES.get(user.user_id)
-	active += TM_COUNT_QUEUE_GAMES.get(user.user_id)
-	if (active + n > Math.max(LIMIT_ACTIVE_GAMES_MIN, Math.min(LIMIT_ACTIVE_GAMES_MAX, finished)))
+	var active = SQL_COUNT_ACTIVE_GAMES.get(user.user_id)
+	// only count queued tournament games as 1/2 of actual number
+	var queued = TM_COUNT_QUEUE_GAMES.get(user.user_id) / 2
+	if (active + queued + n > Math.max(LIMIT_ACTIVE_GAMES_MIN, Math.min(LIMIT_ACTIVE_GAMES_MAX, finished)))
 		return "You cannot join any more games!"
 	return null
 }
