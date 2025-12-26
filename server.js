@@ -928,7 +928,6 @@ app.get("/user/:who_name", function (req, res) {
 		if (req.user)
 			contact = SQL_SELECT_CONTACT.get(req.user.user_id, who.user_id)
 		res.render("user.pug", {
-			user: req.user,
 			who,
 			move_time,
 			timeouts,
@@ -961,7 +960,6 @@ const SQL_UPDATE_CONTACT_NOTE = SQL("update contacts set note=? where me=? and y
 app.get("/contacts", must_be_logged_in, function (req, res) {
 	let contacts = SQL_SELECT_CONTACT_LIST.all(req.user.user_id)
 	res.render("contacts_index.pug", {
-		user: req.user,
 		friends: contacts.filter(user => user.relation > 0),
 		enemies: contacts.filter(user => user.relation < 0),
 	})
@@ -972,11 +970,7 @@ app.get("/contacts/note/:who_name", must_be_logged_in, function (req, res) {
 	if (who) {
 		let contact = SQL_SELECT_CONTACT.get(req.user.user_id, who.user_id)
 		if (contact) {
-			res.render("contacts_note.pug", {
-				user: req.user,
-				who,
-				contact
-			})
+			res.render("contacts_note.pug", { who, contact })
 		} else {
 			return res.status(404).send("User not in your contact list.")
 		}
@@ -1033,17 +1027,9 @@ app.get("/contacts/search", must_be_logged_in, function (req, res) {
 		if (!q.includes("%"))
 			q = "%" + q + "%"
 		let results = SQL_SELECT_USER_BY_SEARCH.all(q)
-		res.render("contacts_search.pug", {
-			user: req.user,
-			search: req.query.q,
-			results
-		})
+		res.render("contacts_search.pug", { search: req.query.q, results })
 	} else {
-		res.render("contacts_search.pug", {
-			user: req.user,
-			search: null,
-			results: null,
-		})
+		res.render("contacts_search.pug", { search: null, results: null })
 	}
 })
 
@@ -1083,18 +1069,12 @@ const MESSAGE_DELETE_ALL_OUTBOX = SQL("UPDATE messages SET is_deleted_from_outbo
 
 app.get("/message/inbox", must_be_logged_in, function (req, res) {
 	let messages = MESSAGE_LIST_INBOX.all(req.user.user_id)
-	res.render("message_inbox.pug", {
-		user: req.user,
-		messages: messages,
-	})
+	res.render("message_inbox.pug", { messages })
 })
 
 app.get("/message/outbox", must_be_logged_in, function (req, res) {
 	let messages = MESSAGE_LIST_OUTBOX.all(req.user.user_id)
-	res.render("message_outbox.pug", {
-		user: req.user,
-		messages: messages,
-	})
+	res.render("message_outbox.pug", { messages })
 })
 
 app.get("/message/read/:message_id", must_be_logged_in, function (req, res) {
@@ -1107,33 +1087,18 @@ app.get("/message/read/:message_id", must_be_logged_in, function (req, res) {
 		req.user.unread --
 	}
 	message.body = linkify_post(message.body)
-	res.render("message_read.pug", {
-		user: req.user,
-		message: message,
-	})
+	res.render("message_read.pug", { message })
 })
 
 app.get("/message/send", must_be_verified, function (req, res) {
 	let friends = SQL_SELECT_CONTACT_FRIEND_NAMES.all(req.user.user_id)
-	res.render("message_send.pug", {
-		user: req.user,
-		to_name: "",
-		subject: "",
-		body: "",
-		friends,
-	})
+	res.render("message_send.pug", { to_name: "", subject: "", body: "", friends })
 })
 
 app.get("/message/send/:to_name", must_be_verified, function (req, res) {
 	let friends = SQL_SELECT_CONTACT_FRIEND_NAMES.all(req.user.user_id)
 	let to_name = req.params.to_name
-	res.render("message_send.pug", {
-		user: req.user,
-		to_name: to_name,
-		subject: "",
-		body: "",
-		friends,
-	})
+	res.render("message_send.pug", { to_name: to_name, subject: "", body: "", friends })
 })
 
 app.post("/message/send", must_be_verified, function (req, res) {
@@ -1144,7 +1109,6 @@ app.post("/message/send", must_be_verified, function (req, res) {
 	if (!to_user) {
 		let friends = SQL_SELECT_CONTACT_FRIEND_NAMES.all(req.user.user_id)
 		return res.render("message_send.pug", {
-			user: req.user,
 			to_id: 0,
 			to_name: to_name,
 			subject: subject,
@@ -1172,7 +1136,6 @@ app.get("/message/reply/:message_id", must_be_verified, function (req, res) {
 		return res.status(404).send("Invalid message ID.")
 	let friends = SQL_SELECT_CONTACT_FRIEND_NAMES.all(req.user.user_id)
 	return res.render("message_send.pug", {
-		user: req.user,
 		to_id: message.from_id,
 		to_name: message.from_name,
 		subject: message.subject.startsWith("Re: ") ? message.subject : "Re: " + message.subject,
@@ -1243,7 +1206,6 @@ function show_forum_page(req, res, page) {
 	else
 		threads = FORUM_LIST_THREADS.all(FORUM_PAGE_SIZE, FORUM_PAGE_SIZE * (page - 1))
 	res.render("forum_view.pug", {
-		user: req.user,
 		threads: threads,
 		current_page: page,
 		page_count: page_count,
@@ -1281,7 +1243,6 @@ app.get("/forum/thread/:thread_id", function (req, res) {
 	if (req.user)
 		FORUM_MARK_READ.run(req.user.user_id, thread_id)
 	res.render("forum_thread.pug", {
-		user: req.user,
 		thread: thread,
 		posts: posts,
 	})
@@ -1303,9 +1264,7 @@ app.get("/forum/delete-post/:post_id", must_be_administrator, function (req, res
 })
 
 app.get("/forum/post", must_be_verified, function (req, res) {
-	res.render("forum_post.pug", {
-		user: req.user,
-	})
+	res.render("forum_post.pug")
 })
 
 app.post("/forum/post", must_be_verified, function (req, res) {
@@ -1325,10 +1284,7 @@ app.get("/forum/edit/:post_id", must_be_verified, function (req, res) {
 	let post = FORUM_GET_POST.get(post_id)
 	if (!post || post.author_id !== req.user.user_id)
 		return res.status(404).send("Invalid post ID.")
-	res.render("forum_edit.pug", {
-		user: req.user,
-		post: post,
-	})
+	res.render("forum_edit.pug", { post })
 })
 
 app.post("/forum/edit/:post_id", must_be_verified, function (req, res) {
@@ -1347,11 +1303,7 @@ app.get("/forum/reply/:post_id", must_be_verified, function (req, res) {
 	let thread = FORUM_GET_THREAD.get(post.thread_id)
 	post.body = linkify_post(post.body)
 	post.edited = post.mtime !== post.ctime
-	res.render("forum_reply.pug", {
-		user: req.user,
-		thread: thread,
-		post: post,
-	})
+	res.render("forum_reply.pug", { thread, post })
 })
 
 app.post("/forum/reply/:thread_id", must_be_verified, function (req, res) {
@@ -1969,7 +1921,6 @@ app.get("/games/public", function (req, res) {
 	annotate_games(finished_games, user_id, unread, unseen)
 
 	res.render("games_public.pug", {
-		user: req.user,
 		open_games,
 		replacement_games,
 		active_games,
@@ -2003,8 +1954,7 @@ function get_title_page(req, res, title_id) {
 	let seeds = user_id ? TM_SEED_LIST_TITLE_WITH_TICKETS.all(user_id, title_id) : TM_SEED_LIST_TITLE.all(title_id)
 
 	res.render("title.pug", {
-		user: req.user,
-		title: title,
+		title,
 		open_games,
 		replacement_games,
 		active_games,
@@ -2022,8 +1972,7 @@ app.get("/create/:title_id", function (req, res) {
 	if (!title)
 		return res.status(404).send("Invalid title.")
 	res.render("create_title.pug", {
-		user: req.user,
-		title: title,
+		title,
 		limit: req.user ? check_create_game_limit(req.user) : null,
 		rules: RULES[title_id],
 	})
@@ -2149,7 +2098,6 @@ app.get("/rematch/:old_game_id", must_be_logged_in, function (req, res) {
 	let game = SQL_SELECT_GAME.get(old_game_id)
 	let players = SQL_SELECT_PLAYERS_WITH_NAME.all(old_game_id)
 	res.render("rematch.pug", {
-		user: req.user,
 		title: TITLE_TABLE[game.title_id],
 		game,
 		players,
@@ -2222,7 +2170,6 @@ app.get("/join/:game_id", function (req, res) {
 		icon += app.locals.PACE_ICON[game.pace]
 
 	res.render("join.pug", {
-		user: req.user,
 		icon,
 		game,
 		roles,
@@ -4574,7 +4521,7 @@ app.get("/stats", function (req, res) {
 		row.result_role = row.result_role.split("%")
 		row.result_count = row.result_count.split("%").map(Number)
 	})
-	res.render("stats_index.pug", { user: req.user, stats, top_finished, top_recent, top_active })
+	res.render("stats_index.pug", { stats, top_finished, top_recent, top_active })
 })
 
 const SQL_USER_STATS = SQL(`
