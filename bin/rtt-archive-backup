@@ -44,8 +44,8 @@ insert into archive.game_chat (game_id, chat_id, user_id, time, message)
 	select game_id, chat_id, user_id, time, message
 	from candidates join live.game_chat using(game_id);
 
-insert into archive.games (game_id, title_id, scenario, options, player_count, ctime, mtime, moves, result)
-	select game_id, title_id, scenario, options, player_count, ctime, mtime, moves, result
+insert into archive.games (game_id, title_id, scenario, options, player_count, ctime, mtime, moves, result, did_resign, did_timeout)
+	select game_id, title_id, scenario, options, player_count, ctime, mtime, moves, result, did_resign, did_timeout
 	from candidates join live.games using(game_id);
 
 commit;

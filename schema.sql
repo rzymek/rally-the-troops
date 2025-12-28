@@ -226,6 +226,7 @@ create view rated_games_view as
 			select 1 from players where players.game_id = games.game_id and user_id = 0
 		)
 		and result != 'None'
+		and not did_timeout
 ;
 
 create table if not exists ratings (
@@ -429,6 +430,9 @@ create table if not exists games (
 	moves integer default 0,
 	active text,
 	result text,
+
+	did_timeout boolean,
+	did_resign boolean,
 
 	is_opposed boolean generated as ( user_count = join_count and join_count > 1 ),
 	is_ready boolean generated as ( player_count = join_count and invite_count = 0 )
@@ -846,6 +850,7 @@ begin
 				when new.result = role then 2
 				when new.result = 'Draw' then 1
 				when instr(new.result, role) then 1
+				when new.did_timeout then null
 				else 0
 			end
 		)

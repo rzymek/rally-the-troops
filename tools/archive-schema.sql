@@ -21,6 +21,8 @@ create table if not exists games (
 	ctime datetime,
 	mtime datetime,
 	moves integer,
+	did_resign boolean,
+	did_timeout boolean,
 	result text
 );
 

@@ -1499,14 +1499,16 @@ const SQL_FINISH_GAME = SQL(`
 		mtime = datetime(),
 		active = null,
 		moves = moves + ?,
-		result = ?
+		result = ?,
+		did_resign = ?,
+		did_timeout = ?
 	where
 		game_id = ?
 `)
 
 const SQL_REWIND_GAME_TIMEOUT = SQL("delete from user_timeout where game_id=?")
 const SQL_REWIND_GAME_CLOCK = SQL("update players set clock=1 where game_id=? and clock < 1")
-const SQL_REWIND_GAME = SQL("update games set status=1,result=null,moves=?,active=?,mtime=datetime() where game_id=?")
+const SQL_REWIND_GAME = SQL("update games set status=1,did_timeout=0,did_resign=0,result=null,moves=?,active=?,mtime=datetime() where game_id=?")
 const SQL_SELECT_REWIND = SQL("select snap_id, state->>'$.active' as active, coalesce(state->>'$.state', state->>'$.L.P', '-') as state from game_snap where game_id=? order by snap_id desc")
 
 const SQL_UPDATE_GAME_ACTIVE = SQL("update games set active=?, mtime=datetime(), moves=moves+1 where game_id=?")
@@ -2864,7 +2866,7 @@ const SQL_ADD_VACATION_TIME = SQL(`
 
 function terminate_game(game, role, user_id) {
 	var result = get_resign_result(game, role)
-	SQL_FINISH_GAME.run(0, result, game.game_id)
+	SQL_FINISH_GAME.run(0, result, 0, 1, game.game_id)
 	SQL_INSERT_TIMEOUT.run(user_id, game.game_id)
 }
 
@@ -3196,7 +3198,6 @@ const TM_SELECT_GAMES = SQL(`
 		tm_rounds.*,
 		games.status,
 		games.moves,
-		games.status > 1 and games.moves < games.player_count as is_abandoned,
 		json_group_object(role, coalesce(name, 'null')) as role_names,
 		json_group_object(role, score) as role_scores
 	from
@@ -3959,20 +3960,6 @@ function put_snap(game_id, replay_id, state) {
 			send_message(other, "snapsize", snap_id)
 }
 
-function put_game_state(game_id, state, old_active, is_move) {
-	// TODO: separate state, undo, and log entries (and reuse "snap" json stringifaction?)
-	SQL_INSERT_GAME_STATE.run(game_id, JSON.stringify(state))
-
-	if (is_nobody_active(state.active)) {
-		SQL_FINISH_GAME.run(is_move, state.result, game_id)
-		if (state.result && state.result !== "None")
-			update_elo_ratings(game_id)
-	} else {
-		if (is_changed_active(old_active, state.active))
-			SQL_UPDATE_GAME_ACTIVE.run(String(state.active), game_id)
-	}
-}
-
 function put_new_state(title_id, game_id, state, old_active, role, action, args, is_move, is_rollback) {
 	SQL_BEGIN.run()
 	try {
@@ -3981,14 +3968,29 @@ function put_new_state(title_id, game_id, state, old_active, role, action, args,
 		if (is_rollback)
 			delete_snaps_after_rollback(game_id, state.log.length)
 
-		if (!dont_snap(RULES[title_id], state, old_active))
-			put_snap(game_id, replay_id, state)
-
-		put_game_state(game_id, state, old_active, is_move)
-
 		if (game_clients[game_id])
 			for (let other of game_clients[game_id])
 				send_state(other, state)
+
+		if (!dont_snap(RULES[title_id], state, old_active))
+			put_snap(game_id, replay_id, state)
+
+		SQL_INSERT_GAME_STATE.run(game_id, JSON.stringify(state))
+
+		if (is_nobody_active(state.active)) {
+			SQL_FINISH_GAME.run(
+				is_move,
+				state.result,
+				Number(action === ".resign"),
+				Number(action === ".timeout"),
+				game_id
+			)
+			if (state.result && state.result !== "None")
+				update_elo_ratings(game_id)
+		} else {
+			if (is_changed_active(old_active, state.active))
+				SQL_UPDATE_GAME_ACTIVE.run(String(state.active), game_id)
+		}
 
 		if (is_nobody_active(state.active))
 			send_game_finished_notification_to_offline_users(game_id, state.result)

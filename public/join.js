@@ -329,7 +329,10 @@ function create_game_list() {
 	}
 
 	if (game.status > 1) {
-		create_game_list_item(list, "Finished", human_date(game.mtime))
+		if (game.did_timeout)
+			create_game_list_item(list, "Timeout", human_date(game.mtime))
+		else
+			create_game_list_item(list, "Finished", human_date(game.mtime))
 		create_game_list_item(list, "Result", game.result)
 	}
 }
