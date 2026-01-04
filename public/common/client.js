@@ -766,16 +766,17 @@ function update_roles() {
 /* LOG */
 
 function update_log(change_start, end) {
-	let div = document.getElementById("log")
+	var entry
+	var div = document.getElementById("log")
 
-	let to_delete = div.children.length - change_start
+	var to_delete = div.children.length - change_start
 	while (to_delete-- > 0)
 		div.removeChild(div.lastChild)
 
-	for (let i = div.children.length; i < end; ++i) {
-		let text = i < game_log.length ? game_log[i] : "???"
+	for (var i = div.children.length; i < end; ++i) {
+		var text = i < game_log.length ? game_log[i] : "???"
 		if (params.mode === "debug" && typeof text === "object") {
-			let entry = document.createElement("a")
+			entry = document.createElement("a")
 			entry.href = "#" + text[0]
 			if (text[3] !== null && text[3] !== undefined)
 				entry.textContent = "\u25b6 " + text[1] + " " + text[2] + " " + text[3]
@@ -785,9 +786,15 @@ function update_log(change_start, end) {
 			entry.style.textDecoration = "none"
 			div.appendChild(entry)
 		} else if (typeof on_log === "function") {
-			div.appendChild(on_log(text, i))
+			try {
+				div.appendChild(on_log(text, i))
+			} catch (err) {
+				entry = document.createElement("div")
+				entry.textContent = err.toString()
+				div.appendChild(entry)
+			}
 		} else {
-			let entry = document.createElement("div")
+			entry = document.createElement("div")
 			entry.textContent = text
 			div.appendChild(entry)
 		}
