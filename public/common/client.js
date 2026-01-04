@@ -576,7 +576,7 @@ function connect_play() {
 		game_cookie = 0
 		document.title = "\xd7 " + game_title
 		document.querySelector("header").classList.add("disconnected")
-		if (evt.reason)
+		if (evt.reason && evt.reason !== "idle")
 			document.getElementById("prompt").textContent = "Disconnected: " + evt.reason
 		else
 			document.getElementById("prompt").textContent = "Disconnected."
