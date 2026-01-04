@@ -725,10 +725,15 @@ function update_view(log_start, log_end) {
 let is_your_turn = false
 
 function update_header() {
-	if (typeof on_prompt === "function")
-		document.getElementById("prompt").innerHTML = on_prompt(view.prompt)
-	else
+	if (typeof on_prompt === "function") {
+		try {
+			document.getElementById("prompt").innerHTML = on_prompt(view.prompt)
+		} catch (err) {
+			document.getElementById("prompt").textContent = err.toString()
+		}
+	} else {
 		document.getElementById("prompt").textContent = view.prompt
+	}
 	if (params.mode === "replay")
 		return
 	if (snap_view)
