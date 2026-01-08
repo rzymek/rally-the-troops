@@ -709,15 +709,15 @@ function connect_play() {
 }
 
 function update_view(log_start, log_end) {
-	update_header()
 	update_roles()
+	update_log(log_start, log_end)
 	try {
 		on_update()
 	} catch (err) {
 		console.error(err)
 		window.alert(err)
 	}
-	update_log(log_start, log_end)
+	update_header()
 }
 
 /* HEADER */
@@ -727,12 +727,12 @@ let is_your_turn = false
 function update_header() {
 	if (typeof on_prompt === "function") {
 		try {
-			document.getElementById("prompt").innerHTML = on_prompt(view.prompt)
+			document.getElementById("prompt").innerHTML = on_prompt(String(view.prompt))
 		} catch (err) {
 			document.getElementById("prompt").textContent = err.toString()
 		}
 	} else {
-		document.getElementById("prompt").textContent = view.prompt
+		document.getElementById("prompt").textContent = String(view.prompt)
 	}
 	if (params.mode === "replay")
 		return
