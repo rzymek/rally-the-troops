@@ -1328,7 +1328,7 @@ var update_zoom = function () {}
 	}
 
 	function should_fit_width(old) {
-		return (map_w <= map_h) && (e_scroll.clientWidth / map_w < old)
+		return (e_scroll.clientWidth / map_w < old)
 	}
 
 	function should_fit_both(old) {
