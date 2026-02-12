@@ -41,18 +41,24 @@ function scroll_into_view(e) {
 	if (window.innerWidth <= 800)
 		document.querySelector("aside").hidden = true
 	setTimeout(function () {
-		e.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" })
+		e.scrollIntoView({ block: "center", inline: "center", behavior: "smooth", container: "nearest" })
+		// NOTE: ugly hack to reset window scroll in case the above scrolls the viewport...
+		// This seems to happen if the target is inside a relative positioned panel and the window
+		// is too short.
+		window.scroll(0,0)
 	}, 0)
 }
 
 function scroll_into_view_if_needed(e) {
 	if (window.innerWidth <= 800) {
 		setTimeout(function () {
-			e.scrollIntoView({ block: "start", inline: "center", behavior: "smooth" })
+			e.scrollIntoView({ block: "start", inline: "center", behavior: "smooth", container: "nearest" })
+			window.scroll(0,0)
 		}, 0)
 	} else {
 		setTimeout(function () {
-			e.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" })
+			e.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth", container: "nearest" })
+			window.scroll(0,0)
 		}, 0)
 	}
 }
