@@ -3112,7 +3112,7 @@ const TM_SEED_STATS = SQL(`
 const TM_SEED_LIST_ALL = SQL(`
 	select *
 	from tm_seed_queue_view as qq
-	where is_open
+	where is_open or q1 > 0 or q2 > 0 or q3 > 0
 	order by seed_name
 `)
 
@@ -3128,7 +3128,7 @@ const TM_SEED_LIST_ALL_WITH_TICKETS = SQL(`
 	select *
 	from tm_seed_queue_view as qq
 	left join ( select * from tm_seed_ticket_view where user_id=? ) using(seed_id)
-	where is_open
+	where is_open or q1 > 0 or q2 > 0 or q3 > 0
 	order by seed_name
 `)
 
