@@ -443,7 +443,7 @@ function _parse(text) {
 				array = line[3]
 				body = line[4]
 				emit(`${i} = 0`)
-				ix_loop = emit(`if (${i} < ${array}.length) { ${k} = ${array}[${i}++] } else { delete ${i} ; L.I = % }`)
+				ix_loop = emit(`if (${i} < ${array}.length) { ${k} = ${array}[${i}++] } else { delete ${i} ; L.I = @ }`)
 				block(body)
 				emit_jump(ix_loop)
 				label(ix_loop)
@@ -484,11 +484,11 @@ function _parse(text) {
 		return '"' + s + '"'
 	}
 
-	function emit_jz(exp, to = "%") {
+	function emit_jz(exp, to = "@") {
 		return emit("if (!(" + exp + ")) L.I = " + to)
 	}
 
-	function emit_jump(to = "%") {
+	function emit_jump(to = "@") {
 		return emit("L.I = " + to)
 	}
 
@@ -498,7 +498,7 @@ function _parse(text) {
 	}
 
 	function label(ix) {
-		prog[ix] = prog[ix].replace("%", prog.length)
+		prog[ix] = prog[ix].replace("@", prog.length)
 	}
 
 	function block(body) {
