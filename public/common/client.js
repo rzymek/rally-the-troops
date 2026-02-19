@@ -1248,6 +1248,8 @@ var update_zoom = function () {}
 	const THRESHOLD = 0.0625
 	const DECELERATION = 125
 
+	const map_fit_key = params.title_id + "/map-fit"
+
 	const e_scroll = document.querySelector("main")
 	e_scroll.style.touchAction = "none"
 	e_scroll.tabIndex = 1 // enable keyboard scrolling
@@ -1376,6 +1378,7 @@ var update_zoom = function () {}
 				transform1.scale = scale
 			}
 
+			localStorage.removeItem(map_fit_key)
 			mapwrap.dataset.fit = "none"
 			mapwrap.dataset.scale = 1
 			mapwrap.style.width = null
@@ -1405,6 +1408,7 @@ var update_zoom = function () {}
 			case "both":
 				mapwrap.dataset.fit = "none"
 		}
+		localStorage.setItem(map_fit_key, mapwrap.dataset.fit)
 		update_map_fit()
 	}
 
@@ -1694,6 +1698,15 @@ var update_zoom = function () {}
 	})
 
 	window.addEventListener("resize", update_zoom)
+
+	// initialize map-fit based on per-device settings
+	if (mapwrap) {
+		var fit = localStorage.getItem(map_fit_key)
+		if (fit) {
+			mapwrap.dataset.fit = fit
+			update_map_fit()
+		}
+	}
 })()
 
 /* INITIALIZE */
