@@ -5,12 +5,9 @@ html
 		include head
 		title Inbox
 		style.
-			a.unread { color: blue }
-			a.read { color: purple }
-			td a { display: block }
 			@media (max-width: 400px) {
-			td:nth-child(3) { display: none }
-			th:nth-child(3) { display: none }
+				td:nth-child(3) { display: none }
+				th:nth-child(3) { display: none }
 			}
 	body
 		include header
@@ -33,9 +30,14 @@ html
 						tr
 							td: a.black(href="/user/"+row.from_name)= row.from_name
 							if row.is_read
-								td: a.read(href="/message/read/"+row.message_id)= subject
+								td
+									a.black(href="/message/read/"+row.message_id)
+										div= subject
 							else
-								td: a.unread(href="/message/read/"+row.message_id)= subject
+								td
+									a.black(href="/message/read/"+row.message_id)
+										div
+											b= "\xbb " + subject
 							td.w= human_date(row.time)
 					else
 						tr

@@ -952,6 +952,7 @@ const SQL_SELECT_CONTACT_WHITELIST = SQL("select you from contacts where me=? an
 const SQL_SELECT_CONTACT_FRIEND_NAMES = SQL("select name from contact_view where me=? and relation>0").pluck()
 const SQL_SELECT_CONTACT_LIST = SQL("select * from contact_view where me=?")
 const SQL_INSERT_CONTACT = SQL("insert into contacts (me,you,relation) values (?,?,?)")
+const SQL_INSERT_CONTACT_NOTE = SQL("insert into contacts (me,you,relation,note) values (?,?,?,?)")
 const SQL_DELETE_CONTACT = SQL("delete from contacts where me=? and you=?")
 const SQL_SELECT_RELATION = SQL("select relation from contacts where me=? and you=?").pluck()
 const SQL_SELECT_CONTACT = SQL("select relation, note from contacts where me=? and you=?")
@@ -1167,15 +1168,15 @@ const FORUM_LIST_THREADS_USER = SQL("SELECT *, (exists (select 1 from read_threa
 const FORUM_LIST_THREADS = SQL("SELECT *, 1 as is_read FROM thread_view ORDER BY mtime DESC LIMIT ? OFFSET ?")
 const FORUM_GET_THREAD = SQL("SELECT * FROM thread_view WHERE thread_id=?")
 const FORUM_LIST_POSTS = SQL("SELECT * FROM post_view WHERE thread_id=?")
+const FORUM_GET_FIRST_POST = SQL("SELECT * FROM post_view WHERE thread_id=? LIMIT 1")
 const FORUM_GET_POST = SQL("SELECT * FROM post_view WHERE post_id=?")
 const FORUM_NEW_THREAD = SQL("INSERT INTO threads (author_id,subject) VALUES (?,?)")
-const FORUM_NEW_POST = SQL("INSERT INTO posts (thread_id,author_id,body) VALUES (?,?,?)")
+const FORUM_NEW_POST = SQL("INSERT INTO posts (thread_id,author_id,body,in_reply_to) VALUES (?,?,?,?)")
 const FORUM_EDIT_POST = SQL("UPDATE posts SET body=?, mtime=datetime() WHERE post_id=? AND author_id=? RETURNING thread_id").pluck()
 const FORUM_MARK_READ = SQL("insert or ignore into read_threads (user_id,thread_id) values (?,?)")
 
-const FORUM_DELETE_THREAD_POSTS = SQL("delete from posts where thread_id=?")
 const FORUM_DELETE_THREAD = SQL("delete from threads where thread_id=?")
-const FORUM_DELETE_POST = SQL("delete from posts where post_id=?")
+const FORUM_DELETE_POST = SQL("delete from posts where post_id=? returning thread_id").pluck()
 
 const FORUM_SEARCH = SQL(`
 	select
@@ -1250,17 +1251,14 @@ app.get("/forum/thread/:thread_id", function (req, res) {
 
 app.get("/forum/delete-thread/:thread_id", must_be_administrator, function (req, res) {
 	let thread_id = req.params.thread_id
-	res.send(JSON.stringify({
-		posts: FORUM_DELETE_THREAD_POSTS.run(thread_id),
-		thread: FORUM_DELETE_THREAD.run(thread_id),
-	}))
+	FORUM_DELETE_THREAD.run(thread_id)
+	res.redirect("/forum")
 })
 
 app.get("/forum/delete-post/:post_id", must_be_administrator, function (req, res) {
 	let post_id = req.params.post_id
-	res.send(JSON.stringify(
-		FORUM_DELETE_POST.run(post_id)
-	))
+	let thread_id = FORUM_DELETE_POST.get(post_id)
+	res.redirect("/forum/thread/" + thread_id)
 })
 
 app.get("/forum/post", must_be_verified, function (req, res) {
@@ -1274,7 +1272,7 @@ app.post("/forum/post", must_be_verified, function (req, res) {
 	if (subject.length === 0)
 		subject = "Untitled"
 	let thread_id = FORUM_NEW_THREAD.run(user_id, subject).lastInsertRowid
-	FORUM_NEW_POST.run(thread_id, user_id, body)
+	FORUM_NEW_POST.run(thread_id, user_id, body, 0)
 	res.redirect("/forum/thread/" + thread_id)
 })
 
@@ -1301,16 +1299,18 @@ app.get("/forum/reply/:post_id", must_be_verified, function (req, res) {
 	if (!post)
 		return res.status(404).send("Invalid post ID.")
 	let thread = FORUM_GET_THREAD.get(post.thread_id)
+	let first = FORUM_GET_FIRST_POST.get(post.thread_id)
 	post.body = linkify_post(post.body)
 	post.edited = post.mtime !== post.ctime
-	res.render("forum_reply.pug", { thread, post })
+	res.render("forum_reply.pug", { thread, first, post })
 })
 
 app.post("/forum/reply/:thread_id", must_be_verified, function (req, res) {
 	let thread_id = req.params.thread_id | 0
+	let in_reply_to = req.body.in_reply_to | 0
 	let user_id = req.user.user_id
 	let body = req.body.body
-	FORUM_NEW_POST.run(thread_id, user_id, body)
+	FORUM_NEW_POST.run(thread_id, user_id, body, in_reply_to)
 	res.redirect("/forum/thread/" + thread_id)
 })
 
@@ -2835,7 +2835,6 @@ setTimeout(purge_game_ticker, 89 * 1000)
 // SQL_UPDATE_PLAYERS_USE_TIME is handled by trigger
 
 const SQL_INSERT_USER_VACATION = SQL("insert into user_vacation (user_id,vacation) values (?,?)")
-const SQL_SELECT_USER_VACATION = SQL("select vacation from user_vacation where user_id = ?").pluck()
 const SQL_SPEND_USER_VACATION = SQL("update user_vacation set vacation = vacation - 1 where vacation > 0 and user_id = ?")
 
 const SQL_SELECT_TIME_CONTROL = SQL("select * from time_control_view")

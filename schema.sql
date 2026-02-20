@@ -396,6 +396,12 @@ create view post_view as
 
 create index if not exists posts_thread_idx on posts(thread_id);
 
+drop trigger if exists trigger_delete_thread_posts;
+create trigger trigger_delete_thread_posts after delete on threads
+begin
+	delete from posts where posts.thread_id = old.thread_id;
+end;
+
 -- Forum Search (FTS5) --
 
 -- drop table if exists forum_search;
@@ -1179,7 +1185,7 @@ end;
 drop trigger if exists trigger_search_delete_thread;
 create trigger trigger_search_delete_thread after delete on threads
 begin
-	delete from forum_search where thread_id=old.thread_id and post_id=0;
+	delete from forum_search where thread_id=old.thread_id;
 end;
 
 drop trigger if exists trigger_search_insert_post;

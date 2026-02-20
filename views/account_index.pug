@@ -59,9 +59,9 @@ html
 				br
 				| <a href="/account/change-about">Change profile text</a>
 
-			p
-				| <a href="/account/delete">Delete account</a>
+			//- p <a href="/account/delete">Delete account</a>
 
-			p
-				form(action="/logout" method="post")
+			hr
+			form(action="/logout" method="post")
+				p
 					button(type="submit") Logout

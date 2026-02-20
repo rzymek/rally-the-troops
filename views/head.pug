@@ -32,25 +32,6 @@ mixin gamecover(title_id)
 	a(href="/"+title_id)
 		img(src=`/${title_id}/cover.1x.jpg` srcset=`/${title_id}/cover.2x.jpg 2x`)
 
-mixin forumpost(row,show_buttons)
-	.post(id=row.post_id)
-		.head
-			.from: b: a.black(href="/user/"+row.author_name)= row.author_name
-			.time= human_date(row.ctime)
-				if row.edited
-					|
-					| (edited #{human_date(row.mtime)})
-		.body!= row.body
-	if show_buttons && user
-		.edit
-			if user.user_id === 1
-				| #[a(href="/forum/delete-post/"+row.post_id) DELETE]
-				|
-			if row.author_id === user.user_id
-				| #[a(href="/forum/edit/"+row.post_id) Edit]
-				|
-			| #[a(href="/forum/reply/"+row.post_id) Reply]
-
 mixin gamelist(list,hide_title=0)
 	div.game_list
 		each item in list
@@ -234,16 +215,20 @@ mixin seedlist(list, title)
 						if seed.is_open || seed.q1 || seed.q2 || seed.q3
 							if seed.t3
 								td #{seed.q3} #{TM_ICON_TICKET}
+							else if seed.level_count >= 3
+								td #{seed.q3|0}
 							else
-								td #{seed.q3}
+								td
 							if seed.t2
 								td #{seed.q2} #{TM_ICON_TICKET}
+							else if seed.level_count >= 2
+								td #{seed.q2|0}
 							else
-								td #{seed.q2}
+								td
 							if seed.t1
 								td #{seed.q1} #{TM_ICON_TICKET}
 							else
-								td #{seed.q1}
+								td #{seed.q1|0}
 							td= seed.pool_size
 						else
 							td.n(colspan=3)
