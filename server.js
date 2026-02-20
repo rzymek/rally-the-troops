@@ -1,7 +1,5 @@
 "use strict"
 
-/* global process, __dirname */
-
 const fs = require("fs")
 const crypto = require("crypto")
 const http = require("http")
@@ -423,7 +421,7 @@ function altcha_verify_solution(payload) {
 		return "missing altcha payload"
 	try {
 		data = JSON.parse(atob(payload))
-	} catch (error) {
+	} catch (_error) {
 		return "invalid altcha payload"
 	}
 	if (data.algorithm !== "SHA-256")
@@ -1325,7 +1323,7 @@ app.get("/forum/edit/:post_id", must_be_verified, function (req, res) {
 	// TODO: edit subject if editing first post
 	let post_id = req.params.post_id | 0
 	let post = FORUM_GET_POST.get(post_id)
-	if (!post || post.author_id != req.user.user_id)
+	if (!post || post.author_id !== req.user.user_id)
 		return res.status(404).send("Invalid post ID.")
 	res.render("forum_edit.pug", {
 		user: req.user,
@@ -1370,7 +1368,7 @@ app.get("/forum/search", must_be_logged_in, function (req, res) {
 	if (search) {
 		try {
 			results = FORUM_SEARCH.all(search)
-		} catch (err) {
+		} catch (_error) {
 			results = FORUM_SEARCH.all('"' + search.replaceAll('"', '""') + '"')
 		}
 	}
@@ -3595,7 +3593,7 @@ function make_pools(seed, players) {
 		if (v % 6 === 0) return designs.pool_players(players, 6)
 		if (v % 12 === 0) return designs.pool_players(players, 12)
 		// misc bibd
-		if (v % 13 === 0 && n == 6)
+		if (v % 13 === 0 && n === 6)
 			return designs.pool_players(players, 13)
 	}
 
@@ -3611,7 +3609,7 @@ function make_pools(seed, players) {
 		// social golfer semi-solutions
 		if (v % 8 === 0) return designs.pool_players(players, 8)
 		// misc bibd
-		if (v % 9 === 0 && n == 8)
+		if (v % 9 === 0 && n === 8)
 			return designs.pool_players(players, 9)
 	}
 
