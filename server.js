@@ -847,13 +847,14 @@ app.get("/account", must_be_logged_in, function (req, res) {
 	var who = SQL_SELECT_USER_PROFILE.get(req.user.name)
 	var move_time = SQL_SELECT_USER_MOVE_TIME.get(who.user_id)
 	var timeouts = SQL_SELECT_USER_TIMEOUTS.get(who.user_id)
+	var tm_banned = TM_SELECT_BANNED.get(req.user.user_id)
 	var mail = {
 		notify: SQL_SELECT_USER_NOTIFY.get(req.user.user_id),
 		is_verified: SQL_SELECT_USER_VERIFIED.get(req.user.user_id)
 	}
 	var webhook = SQL_SELECT_WEBHOOK.get(req.user.user_id)
 	var ratings = SQL_USER_RATINGS.all(req.user.user_id)
-	res.render("account_index.pug", { who, move_time, timeouts, mail, webhook, ratings })
+	res.render("account_index.pug", { who, move_time, timeouts, tm_banned, mail, webhook, ratings })
 })
 
 app.get("/account/mail/subscribe", must_be_verified, function (req, res) {
@@ -937,6 +938,7 @@ app.get("/user/:who_name", must_be_logged_in, function (req, res) {
 	if (who) {
 		let move_time = SQL_SELECT_USER_MOVE_TIME.get(who.user_id)
 		let timeouts = SQL_SELECT_USER_TIMEOUTS.get(who.user_id)
+		var tm_banned = TM_SELECT_BANNED.get(who.user_id)
 		let games = QUERY_LIST_PUBLIC_GAMES_OF_USER.all({ user_id: who.user_id })
 		let ratings = SQL_USER_RATINGS.all(who.user_id)
 		annotate_games(games, 0, null, null)
@@ -950,6 +952,7 @@ app.get("/user/:who_name", must_be_logged_in, function (req, res) {
 			who,
 			move_time,
 			timeouts,
+			tm_banned,
 			contact,
 			games,
 			seeds,
@@ -2972,7 +2975,8 @@ if (TIMEOUT) {
 
 const designs = require("./designs.js")
 
-const TM_SELECT_BANNED = SQL("select exists ( select 1 from tm_banned where user_id=? )").pluck()
+const TM_SELECT_IS_BANNED = SQL("select exists ( select 1 from tm_banned where user_id=? )").pluck()
+const TM_SELECT_BANNED = SQL("select * from tm_banned where user_id=?")
 const TM_INSERT_BANNED = SQL("insert or ignore into tm_banned (user_id, time) values (?, datetime())")
 
 const TM_DELETE_QUEUE_USER = SQL("delete from tm_queue where user_id=?")
@@ -3036,7 +3040,7 @@ function check_join_seed_limit(user, seed) {
 	if (limit)
 		return limit
 
-	if (TM_SELECT_BANNED.get(user.user_id))
+	if (TM_SELECT_IS_BANNED.get(user.user_id))
 		return "You may not join any tournaments."
 
 	if (!DEBUG) {
