@@ -11,8 +11,8 @@ doctype html
 html
 	head
 		include head
-		if user.waiting > 0
-			title= "(" + user.waiting + ") Games"
+		if user.waiting_games + user.waiting_chats > 0
+			title= "(" + (user.waiting_games + user.waiting_chats) + ") Games"
 		else
 			title Games
 		if active_games.length > 0

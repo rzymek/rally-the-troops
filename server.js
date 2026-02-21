@@ -1764,16 +1764,14 @@ function check_create_game_limit(user) {
 	var limit = check_join_game_limit(user, 1)
 	if (limit)
 		return limit
-	if (user.waiting >= LIMIT_WAITING_GAMES)
-		return "You have too many games waiting!"
 	if (SQL_COUNT_OPEN_GAMES.get(user.user_id) >= LIMIT_OPEN_GAMES)
 		return "You have too many open games!"
 	return null
 }
 
 function check_join_game_limit(user, n) {
-	if (user.waiting >= LIMIT_WAITING_GAMES + 1)
-		return "You have too many games waiting!"
+	if (user.waiting_games >= LIMIT_WAITING_GAMES)
+		return "There are games waiting for you to move!"
 	var finished = SQL_COUNT_FINISHED_GAMES.get(user.user_id)
 	var active = SQL_COUNT_ACTIVE_GAMES.get(user.user_id)
 	// only count queued tournament games as 1/2 of actual number

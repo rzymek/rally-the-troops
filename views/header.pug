@@ -12,8 +12,8 @@ header
 			if ENABLE_TOURNAMENTS
 				a(href="/tm/list") Tournaments
 			a(href="/games/public") Public
-			if user.waiting > 0
-				a(href="/games/active") Games (#{user.waiting})
+			if user.waiting_games + user.waiting_chats > 0
+				a(href="/games/active") Games (#{user.waiting_games + user.waiting_chats})
 			else
 				a(href="/games/active") Games
 			a(href="/contacts") Friends

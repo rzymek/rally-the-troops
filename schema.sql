@@ -202,10 +202,12 @@ create view user_dynamic_view as
 				owner_id = users.user_id
 				and status = 0
 				and join_count = 0
-		) + (
+		)
+		as waiting_games,
+		(
 			select count(1) from unseen_games where user_id = users.user_id
 		)
-		as waiting,
+		as waiting_chats,
 		user_id = 1 as is_admin,
 		is_moderator,
 		is_banned
