@@ -392,6 +392,15 @@ function init_notepad() {
 	}
 
 	drag_element_with_mouse("#notepad_window", "#notepad_header")
+
+	document.body.addEventListener("keydown", e => {
+		if (e.key === "Escape") {
+			if (notepad.is_visible) {
+				e.preventDefault()
+				hide_notepad()
+			}
+		}
+	})
 }
 
 function dirty_notepad() {
