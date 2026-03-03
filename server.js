@@ -2883,7 +2883,7 @@ const SQL_SPEND_USER_VACATION = SQL("update user_vacation set vacation = vacatio
 
 const SQL_SELECT_TIME_CONTROL = SQL("select * from time_control_view")
 
-const SQL_INSERT_TIMEOUT = SQL("insert into user_timeout (user_id, game_id) values (?, ?)")
+const SQL_INSERT_TIMEOUT = SQL("insert or ignore into user_timeout (user_id, game_id) values (?, ?)")
 
 const SQL_SELECT_VACATION_CONTROL = SQL(`
 	select
