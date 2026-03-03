@@ -3,8 +3,8 @@
 	"version": "0.0.1",
 	"description": "Rally the Troops!",
 	"dependencies": {
-		"better-sqlite3": "^12.5.0",
-		"bufferutil": "^4.0.9",
+		"better-sqlite3": "^13.0.3",
+		"bufferutil": "^4.1.0",
 		"dotenv": "^16.5.0",
 		"express": "^5.1.0",
 		"marked": "^15.0.11",
@@ -20,5 +20,10 @@
 	"exports": {
 		"./tools/cabinet": "./tools/cabinet.js",
 		"./tools/oklab": "./tools/oklab.js"
+	},
+	"allowScripts": {
+		"better-sqlite3@13.0.3": true,
+		"bufferutil@4.1.0": true,
+		"utf-8-validate@6.0.6": true
 	}
 }

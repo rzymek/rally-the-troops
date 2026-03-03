@@ -5,7 +5,6 @@ const crypto = require("crypto")
 const http = require("http")
 const { WebSocketServer } = require("ws")
 const express = require("express")
-const url = require("url")
 const sqlite3 = require("better-sqlite3")
 const marked = require("marked")
 
@@ -4495,10 +4494,10 @@ function handle_observer_message(socket, cmd, arg) {
 }
 
 wss.on("connection", (socket, req) => {
-	let u = url.parse(req.url, true)
-	if (u.pathname !== "/play-socket")
+	let u = URL.parse(req.url, SITE_URL)
+	if (!u || u.pathname !== "/play-socket")
 		return setTimeout(() => socket.close(1000, "Invalid request."), 30000)
-	req.query = u.query
+	req.searchParams = u.searchParams
 
 	let ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
 
@@ -4514,10 +4513,11 @@ wss.on("connection", (socket, req) => {
 	}
 
 	socket.ip = ip
-	socket.title_id = req.query.title || "unknown"
-	socket.game_id = req.query.game | 0
-	socket.role = req.query.role
-	socket.seen = req.query.seen | 0
+	socket.title_id = req.searchParams.get("title") || "unknown"
+	socket.game_id = req.searchParams.get("game") | 0
+	socket.role = req.searchParams.get("role")
+	socket.seen = req.searchParams.get("seen") | 0
+	let is_reconnect = req.searchParams.get("reconnect") | 0
 
 	SLOG(socket, "OPEN " + socket.seen)
 
@@ -4535,7 +4535,7 @@ wss.on("connection", (socket, req) => {
 
 		let state = get_game_state(socket.game_id)
 
-		if (!req.query.reconnect) {
+		if (!is_reconnect) {
 			let roles = get_game_roles(game.title_id, game.scenario, game.options)
 			send_message(socket, "players", [
 				socket.role,
