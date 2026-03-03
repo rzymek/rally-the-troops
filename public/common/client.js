@@ -676,7 +676,8 @@ function connect_play() {
 			search_params.set("role", params.role)
 			window.history.replaceState(null, "", window.location.pathname + "?" + search_params.toString())
 			init_player_names(arg[1])
-			document.body.classList.add(player.replace(/\W/g, "_"))
+			for (let item of roles)
+				document.body.classList.toggle(item.class_name, item.role === player)
 			if (typeof on_pie === "function")
 				on_pie()
 			break
