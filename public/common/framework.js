@@ -69,6 +69,10 @@ function end(result) {
 	P[L.P]?._resume?.()
 }
 
+function resume() {
+	P[L.P]?._resume?.()
+}
+
 exports.roles ??= ROLES
 
 exports.scenarios ??= (typeof SCENARIOS !== "undefined") ? SCENARIOS : [ "Standard" ]
