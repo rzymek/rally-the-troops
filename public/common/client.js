@@ -1,7 +1,5 @@
 "use strict"
 
-/* global on_update, on_reply, on_log, on_prompt */
-
 /* PUBLIC GLOBALS */
 
 var roles = null
@@ -670,6 +668,8 @@ function connect_play() {
 			window.history.replaceState(null, "", window.location.pathname + "?" + search_params.toString())
 			init_player_names(arg[1])
 			document.body.classList.add(player.replace(/\W/g, "_"))
+			if (typeof on_pie === "function")
+				on_pie()
 			break
 
 		case "presence":
