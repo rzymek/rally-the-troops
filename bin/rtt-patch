@@ -240,6 +240,12 @@ function patch_game(game_id, {validate_actions=true, save_snaps=true, delete_und
 					}
 				}
 				state = rules.action(state, item.role, item.action, args)
+
+				if (state.$pie) {
+					console.log("\tPIE RULE INVOKED")
+					delete state.$pie
+				}
+
 				break
 			}
 
