@@ -4054,13 +4054,14 @@ function on_action(socket, action, args, cookie) {
 		let state = get_game_state(socket.game_id)
 		let old_log_length = state.log.length
 		let old_active = String(state.active)
+		let role = socket.role
 
 		// Don't update cookie during simultaneous turns, as it results
 		// in many in-flight collisions.
 		if (!is_multi_active(old_active))
 			game_cookies[socket.game_id] ++
 
-		state = RULES[socket.title_id].action(state, socket.role, action, args)
+		state = RULES[socket.title_id].action(state, role, action, args)
 
 		if (state.$pie) {
 			swap_player_roles(socket)
@@ -4069,7 +4070,7 @@ function on_action(socket, action, args, cookie) {
 
 		put_new_state(socket.title_id, socket.game_id, state,
 			old_active,
-			socket.role, action, args,
+			role, action, args,
 			1,
 			(action !== "undo" && state.log.length < old_log_length)
 		)
