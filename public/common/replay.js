@@ -362,18 +362,18 @@ async function load_replay() {
 	document.getElementById("actions").appendChild(viewpoint_panel)
 
 	// Adjust replay panel
-	document.getElementById("replay_step_prev").hidden = false
-	document.getElementById("replay_step_next").hidden = false
-	document.getElementById("replay_last").hidden = false
+	replay_panel.querySelector("#replay_step_prev").hidden = false
+	replay_panel.querySelector("#replay_step_next").hidden = false
+	replay_panel.querySelector("#replay_last").hidden = false
 
-	document.getElementById("replay_first").onclick = on_replay_first
-	document.getElementById("replay_prev").onclick = on_replay_jump_prev
-	document.getElementById("replay_step_prev").onclick = on_replay_step_prev
-	document.getElementById("replay_step_next").onclick = on_replay_step_next
-	document.getElementById("replay_next").onclick = on_replay_jump_next
-	document.getElementById("replay_last").onclick = on_replay_last
-	document.getElementById("replay_stop").onclick = on_replay_play_pause
-	document.getElementById("replay_play").onclick = on_replay_play_pause
+	replay_panel.querySelector("#replay_first").onclick = on_replay_first
+	replay_panel.querySelector("#replay_prev").onclick = on_replay_jump_prev
+	replay_panel.querySelector("#replay_step_prev").onclick = on_replay_step_prev
+	replay_panel.querySelector("#replay_step_next").onclick = on_replay_step_next
+	replay_panel.querySelector("#replay_next").onclick = on_replay_jump_next
+	replay_panel.querySelector("#replay_last").onclick = on_replay_last
+	replay_panel.querySelector("#replay_stop").onclick = on_replay_play_pause
+	replay_panel.querySelector("#replay_play").onclick = on_replay_play_pause
 
 	window.addEventListener("keydown", function (evt) {
 		if (evt.altKey || evt.ctrlKey)
