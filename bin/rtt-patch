@@ -140,7 +140,7 @@ function get_resign_result(roles, role) {
 
 function finish_game(rules, state, result, message) {
 	if (typeof rules.finish === "function") {
-		state = RULES[title_id].finish(state, result, message)
+		state = rules.finish(state, result, message)
 	} else {
 		state.state = "game_over"
 		state.active = "None"
@@ -242,7 +242,7 @@ function patch_game(game_id, {validate_actions=true, save_snaps=true, delete_und
 				state = rules.action(state, item.role, item.action, args)
 
 				if (state.$pie) {
-					console.log("\tPIE RULE INVOKED")
+					console.log("\tPIE RULE INVOKED", JSON.stringify(state.$pie))
 					delete state.$pie
 				}
 

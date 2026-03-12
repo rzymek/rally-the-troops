@@ -126,7 +126,13 @@ function eval_action(s, item, p) {
 	default:
 		if (params.mode === "debug")
 			s.log.push([p, item_role.substring(0,2), item_action, item_arguments])
-		return rules.action(s, item_role, item_action, item_arguments)
+		s = rules.action(s, item_role, item_action, item_arguments)
+		if (s.$pie) {
+			if (params.mode === "debug")
+				s.log.push([p, "invoked pie", JSON.stringify(s.$pie,0,2)])
+			delete s.$pie
+		}
+		return s
 	}
 }
 

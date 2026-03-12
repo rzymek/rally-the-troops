@@ -3892,7 +3892,7 @@ function send_message(socket, cmd, arg) {
 function swap_player_roles(socket) {
 	let game = SQL_SELECT_GAME.get(socket.game_id)
 	let roles = get_game_roles(game.title_id, game.scenario, game.options)
-	console.log("PIE RULE", socket.game_id, roles[0], "<->", roles[1])
+	console.log("PIE RULE SWAP", socket.game_id, roles[0], "<->", roles[1])
 	SQL_UPDATE_PLAYER_ROLE.run("PIE0", socket.game_id, roles[0])
 	SQL_UPDATE_PLAYER_ROLE.run("PIE1", socket.game_id, roles[1])
 	SQL_UPDATE_PLAYER_ROLE.run(roles[1], socket.game_id, "PIE0")
@@ -4064,7 +4064,10 @@ function on_action(socket, action, args, cookie) {
 		state = RULES[socket.title_id].action(state, role, action, args)
 
 		if (state.$pie) {
-			swap_player_roles(socket)
+			if (state.$pie.swap)
+				swap_player_roles(socket)
+			if (state.$pie.scenario)
+				SQL_UPDATE_GAME_SCENARIO.run(state.$pie.scenario, socket.game_id)
 			delete state.$pie
 		}
 
