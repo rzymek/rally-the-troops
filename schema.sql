@@ -71,6 +71,12 @@ create table if not exists user_last_seen (
 	ip text
 );
 
+create table if not exists user_may_debug (
+	user_id integer,
+	title_id text,
+	unique (user_id, title_id)
+);
+
 create table if not exists user_timeout (
 	user_id integer,
 	game_id integer,

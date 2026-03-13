@@ -541,6 +541,8 @@ const SQL_UPDATE_USER_FIRST_SEEN = SQL("insert or replace into user_first_seen (
 const SQL_UPDATE_USER_LAST_SEEN = SQL("insert or replace into user_last_seen (user_id,atime,ip) values (?,datetime(),?)")
 const SQL_UPDATE_USER_IS_BANNED = SQL("update users set is_banned=? where user_id=?")
 
+const SQL_SELECT_USER_MAY_DEBUG = SQL("select exists ( select 1 from user_may_debug where user_id=? and title_id=? )").pluck()
+
 const SQL_SELECT_WEBHOOK = SQL("SELECT * FROM webhooks WHERE user_id=?")
 const SQL_SELECT_WEBHOOK_SEND = SQL("SELECT url, format, prefix FROM webhooks WHERE user_id=? AND error is null")
 const SQL_UPDATE_WEBHOOK = SQL("INSERT OR REPLACE INTO webhooks (user_id, url, format, prefix, error) VALUES (?,?,?,?,null)")
@@ -2375,12 +2377,20 @@ function start_game(game) {
 	send_game_started_notification(game.game_id, state.active)
 }
 
+function may_debug_game(user, game) {
+	if (game.status < 1)
+		return false
+	if (game.status > 1)
+		return true
+	return user && (user.is_admin || SQL_SELECT_USER_MAY_DEBUG.get(user.user_id, game.title_id))
+}
+
 app.get("/api/replay/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let game = SQL_SELECT_GAME.get(game_id)
 	if (!game)
 		return res.status(404).send("Invalid game ID.")
-	if (game.status < STATUS_FINISHED && (!req.user || req.user.user_id !== 1))
+	if (!may_debug_game(req.user, game))
 		return res.status(401).send("Not authorized to debug.")
 	if (ENABLE_ARCHIVE) {
 		if (game.status === STATUS_ARCHIVED)
@@ -2394,7 +2404,7 @@ app.get("/api/export/:game_id", must_be_logged_in, function (req, res) {
 	let game = SQL_SELECT_GAME.get(game_id)
 	if (!game)
 		return res.status(404).send("Invalid game ID.")
-	if (game.status < STATUS_FINISHED && (!req.user || req.user.user_id !== 1))
+	if (!may_debug_game(req.user, game))
 		return res.status(401).send("Not authorized to debug.")
 	if (ENABLE_ARCHIVE) {
 		if (game.status === STATUS_ARCHIVED)
