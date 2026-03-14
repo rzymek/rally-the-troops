@@ -1485,8 +1485,8 @@ function watch_rules(rules_dir, rules_file, title) {
 			unload_module(rules_file)
 			load_rules(rules_dir, rules_file, title)
 			sync_client_state_for_title(title.title_id)
-		} catch (err) {
-			console.log(err)
+		} catch (error) {
+			console.log(error)
 		}
 	}
 
@@ -1514,8 +1514,8 @@ function load_titles() {
 			} else {
 				console.log("Cannot find rules for " + title_id)
 			}
-		} catch (err) {
-			console.log(err)
+		} catch (error) {
+			console.log(error)
 		}
 
 		watch_rules(rules_dir, rules_file, title)
@@ -2161,8 +2161,8 @@ app.post("/rematch/:old_game_id", must_be_logged_in, function (req, res) {
 		else
 			new_game_id = SQL_SELECT_REMATCH.get(magic)
 		SQL_COMMIT.run()
-	} catch (err) {
-		return res.send(err.toString())
+	} catch (error) {
+		return res.send(error.toString())
 	} finally {
 		if (db.inTransaction)
 			SQL_ROLLBACK.run()
@@ -2336,9 +2336,9 @@ app.post("/api/start/:game_id", must_be_logged_in, function (req, res) {
 
 	try {
 		start_game(game)
-	} catch (err) {
-		console.log(err)
-		return res.send(err.toString())
+	} catch (error) {
+		console.log(error)
+		return res.send(error.toString())
 	}
 
 	res.send("SUCCESS")
@@ -2457,8 +2457,8 @@ app.post("/api/rewind/:game_id", must_be_logged_in, function (req, res) {
 				rewind_game_to_snap(game_id, snap_id)
 				send_chat_message(game_id, null, `${req.user.name} rewound the game to move ${snap_id}.`)
 				return res.send("SUCCESS")
-			} catch (err) {
-				return res.send(err.toString())
+			} catch (error) {
+				return res.send(error.toString())
 			}
 		}
 	}
@@ -2496,8 +2496,8 @@ app.get("/api/clone/:game_id", must_be_administrator, function (req, res) {
 				stmt.run({ old_game_id, new_game_id })
 		}
 		SQL_COMMIT.run()
-	} catch (err) {
-		return res.send(err.toString())
+	} catch (error) {
+		return res.send(error.toString())
 	} finally {
 		if (db.inTransaction)
 			SQL_ROLLBACK.run()
@@ -2573,9 +2573,9 @@ function update_elo_ratings(game_id) {
 const MAIL_FROM = process.env.MAIL_FROM || "user@localhost"
 const MAIL_FOOTER = "\n--\nYou can unsubscribe from notifications in your account settings:\n" + SITE_URL + "/account\n"
 
-function mail_callback(err) {
-	if (err)
-		console.log("MAIL ERROR", err)
+function mail_callback(error) {
+	if (error)
+		console.log("MAIL ERROR", error)
 }
 
 function mail_addr(user) {
@@ -2646,11 +2646,11 @@ async function send_webhook(user_id, webhook, message, retry=2) {
 			else
 				on_webhook_error(user_id, res.status + ": " + res.statusText)
 		}
-	} catch (err) {
+	} catch (error) {
 		if (retry > 0)
 			retry_webhook(user_id, webhook, message, retry - 1)
 		else
-			on_webhook_error(user_id, err.message)
+			on_webhook_error(user_id, error.message)
 	}
 }
 
@@ -2787,8 +2787,8 @@ function invite_notify_ticker() {
 		try {
 			SQL_UPDATE_INVITE_NOTIFY.run(item.game_id, item.role)
 			send_join_notification(item, item.game_id, "You have an invitation")
-		} catch (err) {
-			console.log(err)
+		} catch (error) {
+			console.log(error)
 		}
 	}
 }
@@ -2811,8 +2811,8 @@ function ready_game_ticker() {
 	for (let game of QUERY_READY_TO_START.all()) {
 		try {
 			start_game(game)
-		} catch (err) {
-			console.log(err)
+		} catch (error) {
+			console.log(error)
 		}
 	}
 }
@@ -2954,8 +2954,8 @@ function time_control_ticker() {
 		}
 
 		SQL_COMMIT.run()
-	} catch (err) {
-		console.log(err)
+	} catch (error) {
+		console.log(error)
 		return
 	} finally {
 		if (db.inTransaction)
@@ -3779,8 +3779,8 @@ function start_tournament_seed_mc(seed_id, level) {
 		if (!seed.is_open)
 			TM_DELETE_QUEUE_SEED.run(seed_id, level)
 		SQL_COMMIT.run()
-	} catch (err) {
-		console.log(err)
+	} catch (error) {
+		console.log(error)
 	} finally {
 		if (db.inTransaction)
 			SQL_ROLLBACK.run()
@@ -3853,8 +3853,8 @@ function tournament_ticker() {
 		tm_reap_pools()
 		tm_start_ready_seeds()
 		tm_start_ready_games()
-	} catch (err) {
-		console.log(err)
+	} catch (error) {
+		console.log(error)
 	}
 }
 
@@ -3899,6 +3899,11 @@ function send_message(socket, cmd, arg) {
 	socket.send(JSON.stringify([ cmd, arg ]))
 }
 
+function send_error(socket, error) {
+	console.log(error.stack)
+	send_message(socket, "error", error.toString())
+}
+
 function swap_player_roles(socket) {
 	let game = SQL_SELECT_GAME.get(socket.game_id)
 	let roles = get_game_roles(game.title_id, game.scenario, game.options)
@@ -3937,9 +3942,8 @@ function send_state(socket, state) {
 		if (is_nobody_active(state.active)) {
 			socket.send('["finished"]')
 		}
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		return send_error(socket, error)
 	}
 }
 
@@ -4087,9 +4091,8 @@ function on_action(socket, action, args, cookie) {
 			1,
 			(action !== "undo" && state.log.length < old_log_length)
 		)
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4097,9 +4100,8 @@ function on_resign(socket) {
 	SLOG(socket, "RESIGN")
 	try {
 		do_resign(socket.game_id, socket.role, ".resign", socket.role + " resigned.")
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4145,9 +4147,8 @@ function on_query(socket, q, params) {
 			let reply = RULES[socket.title_id].query(state, socket.role, q, params)
 			send_message(socket, "reply", [ q, reply ])
 		}
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4159,9 +4160,8 @@ function on_query_snap(socket, snap_id, q, params) {
 			let reply = RULES[socket.title_id].query(state, socket.role, q, params)
 			send_message(socket, "reply", [ q, reply ])
 		}
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4175,9 +4175,8 @@ function on_getnote(socket) {
 			SLOG(socket, "GETNOTE null")
 			send_message(socket, "note", "")
 		}
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4197,9 +4196,8 @@ function on_putnote(socket, note) {
 			}
 		}
 
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4210,9 +4208,8 @@ function on_getchat_observer(socket, seen) {
 			SLOG(socket, "GETCHAT", seen, chat.length)
 		for (let i = 0; i < chat.length; ++i)
 			send_message(socket, "chat", chat[i])
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4224,9 +4221,8 @@ function on_getchat(socket, seen) {
 		for (let i = 0; i < chat.length; ++i)
 			send_message(socket, "chat", chat[i])
 		SQL_DELETE_UNREAD_CHAT.run(socket.user.user_id, socket.game_id)
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4235,9 +4231,8 @@ function on_chat(socket, message) {
 	try {
 		SLOG(socket, "CHAT")
 		send_chat_message(socket.game_id, socket.user.user_id, message)
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4275,9 +4270,8 @@ function on_snap(socket, snap_id) {
 		} else {
 			send_message(socket, "nosnap", snap_id)
 		}
-	} catch (err) {
-		console.log(err)
-		return send_message(socket, "error", err.toString())
+	} catch (error) {
+		send_error(socket, error)
 	}
 }
 
@@ -4435,9 +4429,9 @@ wss.on("connection", (socket, req) => {
 			}
 		})
 
-		socket.on("error", (err) => {
-			SLOG(socket, "ERROR" + err)
-			socket.close(1000, err.toString())
+		socket.on("error", (error) => {
+			SLOG(socket, "ERROR" + error)
+			socket.close(1000, error.toString())
 		})
 
 		socket.on("message", (data) => {
@@ -4447,8 +4441,8 @@ wss.on("connection", (socket, req) => {
 					handle_player_message(socket, cmd, arg)
 				else
 					handle_observer_message(socket, cmd, arg)
-			} catch (err) {
-				send_message(socket, "error", err.toString())
+			} catch (error) {
+				send_error(socket, error)
 			}
 		})
 
@@ -4459,9 +4453,9 @@ wss.on("connection", (socket, req) => {
 			send_message(socket, "snapsize", snapsize)
 
 		send_state(socket, get_game_state(socket.game_id))
-	} catch (err) {
-		console.log(err)
-		socket.close(1000, err.message)
+	} catch (error) {
+		console.log(error)
+		socket.close(1000, error.message)
 	}
 })
 
@@ -4492,8 +4486,8 @@ app.get("/docs/:file", function (req, res) {
 		file += ".md"
 	try {
 		res.send(render_markdown("docs/" + file))
-	} catch (err) {
-		res.status(404).send(err.message)
+	} catch (error) {
+		res.status(404).send(error.message)
 	}
 })
 
@@ -4503,8 +4497,8 @@ app.get("/docs/:dir/:file", function (req, res) {
 		file += ".md"
 	try {
 		res.send(render_markdown("docs/" + req.params.dir + "/" + file))
-	} catch (err) {
-		res.status(404).send(err.message)
+	} catch (error) {
+		res.status(404).send(error.message)
 	}
 })
 
