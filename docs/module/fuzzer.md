@@ -61,3 +61,21 @@ or action generation by checking if globalThis.RTT_FUZZER is true.
 	} else {
 		// this code never runs in the fuzzer!
 	}
+
+## Breakpoints
+
+A neat trick you can do with the fuzzer is to use it to create games for
+testing something specific, like a corner case, or just a late game situation.
+If you throw an exception when the code hits the place you want to test,
+the fuzzer will stop and save a game state at this point.
+
+This is like setting a breakpoint in a debugger, and using the fuzzer to
+generate a lot of random situations where the breakpoint triggers.
+
+Throw an exception where you want to stop:
+
+	if (this || that)
+		throw "STOP"
+
+Then run the fuzzer until the "STOP" error is thrown. Now you will have
+a game you can import right where the breakpoint triggered.
