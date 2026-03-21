@@ -212,8 +212,12 @@ app.locals.ENABLE_FORUM = process.env.FORUM | 0
 app.locals.ENABLE_TOURNAMENTS = process.env.TOURNAMENTS | 0
 app.locals.ENABLE_ARCHIVE = ENABLE_ARCHIVE
 
-app.locals.EMOJI_PRIVATE = "\u{1F512}" // or 512
-app.locals.EMOJI_MATCH = "\u{1f3c6}"
+app.locals.ICON_PRIVATE = "\u{1f512}"
+app.locals.ICON_MATCH = "\u{1f3c6}"
+app.locals.ICON_UNREAD = "\u{1f4dd}"
+app.locals.ICON_SEND = "\u{1f4dd}"
+app.locals.ICON_NOTE = "\u270f"
+app.locals.ICON_X = "\u2716"
 
 app.locals.TM_ICON_QUEUE = "\u{1f465}"
 app.locals.TM_ICON_TICKET = "\u{1f3ab}"
@@ -2201,9 +2205,9 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 
 	let icon = ""
 	if (game.is_private)
-		icon += app.locals.EMOJI_PRIVATE
+		icon += app.locals.ICON_PRIVATE
 	if (game.is_match)
-		icon += app.locals.EMOJI_MATCH
+		icon += app.locals.ICON_MATCH
 	if (game.pace)
 		icon += app.locals.PACE_ICON[game.pace]
 

@@ -185,7 +185,7 @@ function init_chat() {
 	chat_window.hidden = true
 	chat_window.innerHTML = `
 		<div id="chat_header">Chat</div>
-		<div id="chat_x" onclick="toggle_chat()">\u274c</div>
+		<div id="chat_x" onclick="toggle_chat()">\u2716</div>
 		<div id="chat_text"></div>
 		<form id="chat_form" action=""><input id="chat_input" autocomplete="off"></form>
 		<div id="chat_size"></div>
@@ -380,7 +380,7 @@ function init_notepad() {
 	notepad_window.hidden = true
 	notepad_window.innerHTML = `
 		<div id="notepad_header">Notepad: ${player}</div>
-		<div id="notepad_x" onclick="toggle_notepad()">\u274c</div>
+		<div id="notepad_x" onclick="toggle_notepad()">\u2716</div>
 		<textarea id="notepad_input" maxlength="16000" oninput="dirty_notepad()"></textarea>
 		<div id="notepad_footer"><button id="notepad_save" onclick="save_notepad()" disabled>Save</button></div>
 		`
