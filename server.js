@@ -3042,11 +3042,11 @@ const TM_COUNT_QUEUE = SQL(`
 `).pluck()
 
 const TM_COUNT_QUEUE_GAMES = SQL(`
-	select sum(round_count) from tm_queue join tm_seeds using(seed_id) where user_id = ?
+	select sum(match_count) from tm_queue join tm_seeds using(seed_id) where user_id = ?
 `).pluck()
 
 function check_join_seed_limit(user, seed) {
-	let limit = check_join_game_limit(user, seed.round_count / 2)
+	let limit = check_join_game_limit(user, seed.match_count / 2)
 	if (limit)
 		return limit
 
@@ -3522,7 +3522,7 @@ app.post("/tm/start/:seed_id/:level", must_be_administrator, function (req, res)
 function make_pools(seed, players) {
 	let v = players.length
 	let k = seed.player_count
-	let n = seed.round_count
+	let n = seed.match_count
 
 	if (k === 2) {
 		if (n === 4) {
@@ -3621,7 +3621,7 @@ function make_pools(seed, players) {
 function make_rounds(seed, players) {
 	let v = players.length
 	let k = seed.player_count
-	let n = seed.round_count
+	let n = seed.match_count
 	let rounds
 	if (seed.is_concurrent)
 		rounds = make_concurrent_rounds(v, k, n)
@@ -3632,21 +3632,26 @@ function make_rounds(seed, players) {
 
 function make_concurrent_rounds(v, k, n) {
 	if (k === 2) {
-		if (v - 1 <= n / 2)
-			return [ designs.double_berger_table(v).flat() ]
-		else if (v & 1)
-			return [ designs.concurrent_round_robin(v).flat() ]
-		else
-			return [ designs.berger_table(v).flat() ]
+		if (v - 1 <= n / 2) {
+			if (v & 1)
+				return designs.concurrent_double_round_robin(v)
+			else
+				return designs.double_berger_table_flat(v)
+		} else {
+			if (v & 1)
+				return designs.concurrent_round_robin(v)
+			else
+				return designs.berger_table_flat(v)
+		}
 	}
 
-	let bibd = designs.youden_square(v, k)
-	if (bibd)
-		return [ bibd ]
+	let youden = designs.youden_square(v, k)
+	if (youden)
+		return [ youden.flat() ]
 
-	let rbibd = designs.resolvable_bibd(v, k)
+	let rbibd = designs.concurrent_resolvable_bibd(v, k, n)
 	if (rbibd)
-		return [ rbibd.slice(0, n).flat() ]
+		return rbibd
 
 	throw new Error("cannot create rounds for this configuration")
 }
@@ -3658,6 +3663,10 @@ function make_sequential_rounds(v, k, n) {
 		else
 			return designs.berger_table(v)
 	}
+
+	let youden = designs.youden_square(v, k)
+	if (youden)
+		return youden
 
 	let rbibd = designs.resolvable_bibd(v, k)
 	if (rbibd)

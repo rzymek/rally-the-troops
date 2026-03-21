@@ -38,11 +38,11 @@ html
 					td Players
 					td #{seed.pool_size}
 				tr
-					td Rounds
+					td Matches
 					if (seed.is_concurrent)
-						td #{seed.round_count} concurrent
+						td #{seed.match_count} concurrent
 					else
-						td #{seed.round_count} sequential
+						td #{seed.match_count} sequential
 				if seed.seed_notice
 					tr
 						td Notice

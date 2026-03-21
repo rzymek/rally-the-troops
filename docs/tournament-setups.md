@@ -37,19 +37,27 @@ There is no need to use sequential scheduling for 2p games. The system ensures
 a player will not play the same role/color in more than one game at a time per
 tournament, even when scheduling games for concurrent rounds.
 
-With odd number of players:
+## Odd number of players
 
 * 3 players, 4 rounds (doubled)
 * 5 players, 4 rounds
 * 7 players, 6 rounds
 * 9 players, 8 rounds
 
-With even number of players:
+Sequential scheduling has one player sit out each round.
+
+Concurrent scheduling has two matches per round (playing both sides simultaneously).
+
+To play all matches at once, set stagger to zero days.
+
+## Even number of players
 
 * 4 players, 3 rounds or 6 rounds (doubled)
 * 6 players, 5 rounds or 10 rounds (doubled)
 * 8 players, 7 rounds
 * 10 players, 9 rounds
+
+Concurrent scheduling puts all matches in one round.
 
 # Multi-player
 
@@ -57,27 +65,42 @@ The 3/4/5-player game scheduling is based on using Youden squares or Resolvable
 Balanced Incomplete Block Designs (RBIBD). To read more about this, search for
 Kirkman's schoolgirl problem and the social golfer problem.
 
-
 You can of course use the sequential schedules to play concurrently,
-but not vice-versa.
+but vice-versa does not work as well.
 
 ## Concurrent (Youden square)
 
 For concurrent play, a Youden square design will ensure everybody plays everybody
 else evenly, and also play each role/color evenly. This particular design unfortunately
-requires that you play all of the games at once!
+requires that you play multiple games at once to avoid players having no games in some rounds.
 
-* For 3p, you need 7 players to meet everybody once in 3 rounds.
-* For 4p, you need 13 players to meet everybody once in 4 rounds.
-* For 4p, you need 7 players to meet everybody twice in 4 rounds.
-* For 5p, you need 21 players to meet everybody once in 5 rounds.
-* For 5p, you need 11 players to meet everybody twice in 5 rounds.
-* For 6p, you need 31 players to meet everybody once in 6 rounds.
-* For 6p, you need 11 players to meet everybody thrice in 6 rounds.
+* For 3p, you need 7 players to meet everybody once in 3 matches.
+* For 4p, you need 13 players to meet everybody once in 4 matches.
+* For 4p, you need 7 players to meet everybody twice in 4 matches.
+* For 5p, you need 21 players to meet everybody once in 5 matches.
+* For 5p, you need 11 players to meet everybody twice in 5 matches.
+* For 6p, you need 31 players to meet everybody once in 6 matches.
+* For 6p, you need 11 players to meet everybody thrice in 6 matches.
+
+In sequential schedules, the matches are batched into rounds so that everybody
+has at least one game going, and some players multiple.
+
+> For example, here's the concurrency table for 3p sequential play:
+>
+> * Round 1: 1,2,2,3,2,1,1
+> * Round 2: 2,1,1,0,1,2,2
+>
+> One player has 3 games in round one, and 0 games in round two;
+> three players have 2 games, then 1 game; and the last three players have 1 game, then 2 games.
 
 ## Concurrent (BIBD)
 
-There are a few irregular block designs that work well for concurrent play:
+There are a few irregular block designs that work very well for concurrent play.
+These all have perfect incidence matrices: everybody meets everybody else evenly,
+and plays each side the same number of times.
+
+These designs also work well for sequential-ish play with few concurrent
+matches per round.
 
 * 3p -- 13 players meet 1x in 6 rounds
 * 4p -- 9 players meet 3x in 8 rounds

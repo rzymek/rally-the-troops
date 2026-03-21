@@ -720,7 +720,7 @@ create table if not exists tm_seeds (
 	pace integer default 2,
 
 	pool_size integer default 3,
-	round_count integer default 4,
+	match_count integer default 4,
 	is_concurrent boolean default 1,
 
 	level_count integer default 1,

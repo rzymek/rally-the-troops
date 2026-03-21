@@ -8,6 +8,7 @@ server instance and how to create new modules.
 
 * [Tips & Tricks](tips.md)
 * [Tournaments](tournaments.md)
+* [Tournament setups](tournament-setups.md)
 
 ## For developers
 
