@@ -95,8 +95,8 @@ function scroll_with_middle_mouse(panel_sel, multiplier) {
 }
 
 function drag_element_with_mouse(element_sel, grabber_sel) {
-	let element = document.querySelector(element_sel)
-	let grabber = document.querySelector(grabber_sel) || element
+	let element = element_sel instanceof Element ? element_sel : document.querySelector(element_sel)
+	let grabber = grabber_sel instanceof Element ? grabber_sel : document.querySelector(grabber_sel) ?? element
 	let grab_x, grab_y, start_x, start_y, w, h, win_w, win_h
 	function md(e) {
 		if (e.button === 0) {
@@ -129,8 +129,8 @@ function drag_element_with_mouse(element_sel, grabber_sel) {
 }
 
 function resize_element_with_mouse(element_sel, grabber_sel) {
-	let element = document.querySelector(element_sel)
-	let grabber = document.querySelector(grabber_sel) || element
+	let element = element_sel instanceof Element ? element_sel : document.querySelector(element_sel)
+	let grabber = grabber_sel instanceof Element ? grabber_sel : document.querySelector(grabber_sel) ?? element
 	let grab_x, grab_y, start_w, start_h, w, h, win_w, win_h
 	function md(e) {
 		if (e.button === 0) {
