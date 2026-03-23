@@ -678,6 +678,7 @@ function connect_play() {
 			init_player_names(arg[1])
 			for (let item of roles)
 				document.body.classList.toggle(item.class_name, item.role === player)
+			update_view(0, game_log.length)
 			if (typeof on_pie === "function")
 				on_pie()
 			break
