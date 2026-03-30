@@ -298,7 +298,10 @@ async function load_replay() {
 	let body = await response.json()
 	replay = body.replay
 
-	init_player_names(body.players)
+	let role_list = rules.roles
+	if (typeof role_list === "function")
+		role_list = role_list(body.setup.scenario, body.setup.options)
+	init_player_names(role_list.map(r => ({ role: r, name: body.players.find(p => p.role === r)?.name })))
 
 	if (typeof rules.static_view === "function")
 		static_view = rules.static_view(body.state)
