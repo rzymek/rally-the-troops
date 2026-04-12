@@ -3052,7 +3052,7 @@ const TM_COUNT_QUEUE_GAMES = SQL(`
 `).pluck()
 
 function check_join_seed_limit(user, seed) {
-	let limit = check_join_game_limit(user, seed.round_count)
+	let limit = check_join_game_limit(user, seed.round_count / 2)
 	if (limit)
 		return limit
 
