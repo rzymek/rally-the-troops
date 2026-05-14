@@ -133,6 +133,10 @@ function list_actions(R, V) {
 }
 
 function fuzz(input) {
+	return run_fuzz(input, false)
+}
+
+function run_fuzz(input, diagnostic) {
 	var timeout = Date.now() + MAX_TIMEOUT
 	var steps = 0
 
@@ -162,7 +166,7 @@ function fuzz(input) {
 		replay: [],
 	}
 
-	var G, R, V, actions, action, prev_G
+	var G, R, V, actions, action, prev_G, prev_active, prev_seed
 
 	try {
 		ctx.state = G = rules.setup(seed, scenario, options)
@@ -194,22 +198,34 @@ function fuzz(input) {
 		}
 
 		action = data.pickValue(actions)
-		prev_G = object_copy(G)
+		if (diagnostic) {
+			prev_G = object_copy(G)
+			prev_active = prev_G.active
+			prev_seed = prev_G.seed
+		} else {
+			prev_active = Array.isArray(G.active) ? G.active.slice() : G.active
+			prev_seed = G.seed
+		}
 		try {
 			ctx.state = G = rules.action(G, action[0], action[1], action[2])
 			ctx.replay.push(action)
 			if (typeof rules.assert === "function")
 				rules.assert(G)
 		} catch (e) {
-			ctx.state = prev_G
+			if (!diagnostic) {
+				if (!run_fuzz(input, true))
+					return
+			} else {
+				ctx.state = prev_G
+			}
 			return log_crash(e, ctx, action)
 		}
 
 		if (G.undo.length > 0) {
-			if (String(prev_G.active) !== String(G.active))
-				return log_crash("BadUndo (active " + prev_G.active + " to " + G.active + ", " + G.undo.length + ")", ctx, action)
-			if (prev_G.seed !== G.seed)
-				return log_crash("BadUndo (seed " + prev_G.seed + " to " + G.seed + ", " + G.undo.length + ")", ctx, action)
+			if (String(prev_active) !== String(G.active))
+				return log_crash("BadUndo (active " + prev_active + " to " + G.active + ", " + G.undo.length + ")", ctx, action)
+			if (prev_seed !== G.seed)
+				return log_crash("BadUndo (seed " + prev_seed + " to " + G.seed + ", " + G.undo.length + ")", ctx, action)
 		}
 
 		if (++steps > MAX_STEPS)
@@ -218,6 +234,8 @@ function fuzz(input) {
 		if (Date.now() > timeout)
 			return log_crash("Timeout at " + steps + " steps", ctx)
 	}
+
+	return true
 }
 
 function log_crash(message, ctx, action) {
