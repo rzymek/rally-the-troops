@@ -853,7 +853,7 @@ function show_toolbar_button(label, callback) {
 	return button
 }
 
-function action_button_with_argument(verb, noun, label) {
+function action_button_with_argument_imp(verb, noun, label, callback) {
 	if (params.mode === "replay")
 		return
 	let id = verb + "_" + noun + "_button"
@@ -862,7 +862,7 @@ function action_button_with_argument(verb, noun, label) {
 		button = document.createElement("button")
 		button.id = id
 		button.innerHTML = label
-		button.addEventListener("click", evt => send_action(verb, noun))
+		button.addEventListener("click", callback)
 		document.getElementById("actions").prepend(button)
 	}
 	if (view.actions && view.actions[verb] && view.actions[verb].includes(noun)) {
@@ -896,6 +896,14 @@ function action_button_imp(action, label, callback) {
 	} else {
 		button.hidden = true
 	}
+}
+
+function action_button_with_argument(verb, noun, label) {
+	action_button_with_argument_imp(verb, noun, label, evt => send_action(verb, noun))
+}
+
+function confirm_action_button_with_argument(verb, noun, label, message) {
+	action_button_with_argument_imp(verb, noun, label, evt => confirm_send_action(verb, noun, message))
 }
 
 function action_button(action, label) {
