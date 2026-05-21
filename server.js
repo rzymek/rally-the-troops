@@ -1772,6 +1772,8 @@ const QUERY_LIST_FINISHED_GAMES_OF_USER = SQL(`
 	`)
 
 function check_create_game_limit(user) {
+	if (user.is_tournament)
+		return null
 	var limit = check_join_game_limit(user, 1)
 	if (limit)
 		return limit

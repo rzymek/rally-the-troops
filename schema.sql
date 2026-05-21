@@ -39,8 +39,9 @@ create table if not exists users (
 	mail text unique collate nocase,
 	notify integer default 0,
 	is_verified boolean default 0,
+	is_moderator boolean default 0,
+	is_tournament boolean default 0,
 	is_banned boolean default 0,
-	is_moderator boolean default 0
 );
 
 insert or ignore into
@@ -216,6 +217,7 @@ create view user_dynamic_view as
 		as waiting_chats,
 		user_id = 1 as is_admin,
 		is_moderator,
+		is_tournament,
 		is_banned
 	from
 		users
