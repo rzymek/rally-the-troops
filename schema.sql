@@ -41,7 +41,7 @@ create table if not exists users (
 	is_verified boolean default 0,
 	is_moderator boolean default 0,
 	is_tournament boolean default 0,
-	is_banned boolean default 0,
+	is_banned boolean default 0
 );
 
 insert or ignore into
