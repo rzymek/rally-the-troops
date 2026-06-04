@@ -28,7 +28,7 @@ server instance and how to create new modules.
 * [Rules framework](module/rules.md)
 	* [Script syntax](module/script.md)
 	* [Utility library](module/library.md)
-* Create the user interface (todo)
+* [Create the user interface](module/world.md)
 * Prepare the art assets (todo)
 * [Test with the Fuzzer](module/fuzzer.md)
 

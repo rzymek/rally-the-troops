@@ -42,7 +42,7 @@ After creating this file, source it into the database and restart the server pro
 
 Each game needs a cover image! Create a file containing the high resolution cover image named cover.png or cover.jpg. After you have created or modified the cover image, run the following script to generate the small cover images and thumbnails that the site uses.
 
-	$ bash tools/gencovers.sh
+	$ rtt update-covers
 
 <i>This script requires ImageMagick (convert), netpbm (pngtopnm), and libjpeg (cjpeg) tools to be installed.</i>
 

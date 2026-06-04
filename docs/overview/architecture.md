@@ -51,8 +51,3 @@ The "rtt" command (in bin/rtt) is useful for administrating the server and debug
 
 	rtt show-game game_id
 		Print game state JSON object for debugging.
-
-<!--
-	bash tools/gencovers.sh
-		Generate cover images and thumbnails. Requires imagemagick.
--->
