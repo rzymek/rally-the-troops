@@ -309,12 +309,28 @@ function SLOG(socket, ...msg) {
 		...msg)
 }
 
+function future_date(date, days) {
+	var seconds = days * 86400
+	if (days < 1) {
+		if (seconds < 60) return "now"
+		if (seconds < 120) return "in 1 minute"
+		if (seconds < 3600) return "in " + Math.floor(seconds / 60) + " minutes"
+		if (seconds < 7200) return "in 1 hour"
+		if (seconds < 86400) return "in " + Math.floor(seconds / 3600) + " hours"
+	}
+	if (days < 2) return "tomorrow"
+	if (days < 7) return "in " + Math.round(days) + " days"
+	return new Date(epoch_from_julianday(date)).toISOString().substring(0,10)
+}
+
 function human_date(date) {
 	if (typeof date === "string")
 		date = julianday_from_epoch(Date.parse(date + "Z"))
 	if (typeof date !== "number")
 		return "never"
 	var days = julianday_from_epoch(Date.now()) - date
+	if (days < 0)
+		return future_date(date, -days)
 	var seconds = days * 86400
 	if (days < 1) {
 		if (seconds < 60) return "now"
@@ -1401,7 +1417,7 @@ app.get("/forum/search", must_be_logged_in, function (req, res) {
  * GAME LOBBY
  */
 
-let RULES = {}
+let RULES = app.locals.RULES = {}
 let TITLE_TABLE = app.locals.TITLE_TABLE = {}
 let TITLE_LIST = app.locals.TITLE_LIST = []
 let TITLE_NAME = app.locals.TITLE_NAME = {}
@@ -1548,7 +1564,18 @@ function load_titles() {
 
 load_titles()
 
-const SQL_INSERT_GAME = SQL("INSERT INTO games (owner_id,title_id,scenario,options,player_count,pace,is_private,is_random,notice,is_match) VALUES (?,?,?,?,?,?,?,?,?,?) returning game_id").pluck()
+const SQL_INSERT_GAME = SQL(`
+	insert into games (owner_id,title_id,scenario,options,player_count,pace,is_private,is_random,notice)
+	values (?,?,?, ?,?,?, ?,?,?)
+	returning game_id
+`).pluck()
+
+const SQL_INSERT_GAME_MATCH = SQL(`
+	insert into games (owner_id,title_id,scenario,options,player_count,pace,is_private,is_random,notice,is_match,ctime,xtime)
+	values (?,?,?, ?,?,?, ?,?,?, 1, datetime(?), datetime(?))
+	returning game_id
+`).pluck()
+
 const SQL_DELETE_GAME_BY_OWNER = SQL("delete from games where game_id=? and owner_id=?")
 const SQL_DELETE_GAME = SQL("delete from games where game_id=?")
 
@@ -1577,7 +1604,7 @@ const SQL_FINISH_GAME = SQL(`
 `)
 
 const SQL_REWIND_GAME_TIMEOUT = SQL("delete from user_timeout where game_id=?")
-const SQL_REWIND_GAME_CLOCK = SQL("update players set clock=1 where game_id=? and clock < 1")
+const SQL_REWIND_GAME_CLOCK = SQL("update players set clock=max(1,clock), active_time=julianday() where game_id=?")
 const SQL_REWIND_GAME = SQL("update games set status=1,did_timeout=0,did_resign=0,result=null,moves=?,active=?,mtime=datetime() where game_id=?")
 const SQL_SELECT_REWIND = SQL("select snap_id, state->>'$.active' as active, coalesce(state->>'$.state', state->>'$.L.P', '-') as state from game_snap where game_id=? order by snap_id desc")
 
@@ -2066,7 +2093,7 @@ app.post("/create/:title_id", must_be_logged_in, function (req, res) {
 
 	let player_count = get_game_roles(title_id, scenario, options).length
 
-	let game_id = SQL_INSERT_GAME.get(user_id, title_id, scenario, options, player_count, pace, priv, rand, notice, 0)
+	let game_id = SQL_INSERT_GAME.get(user_id, title_id, scenario, options, player_count, pace, priv, rand, notice)
 	res.redirect("/join/" + game_id)
 })
 
@@ -2874,14 +2901,11 @@ setTimeout(purge_game_ticker, 89 * 1000)
  * TIME CONTROL
  */
 
-// SQL_UPDATE_PLAYERS_INIT_TIME is handled by trigger
-// SQL_UPDATE_PLAYERS_ADD_TIME is handled by trigger
-// SQL_UPDATE_PLAYERS_USE_TIME is handled by trigger
-
 const SQL_INSERT_USER_VACATION = SQL("insert into user_vacation (user_id,vacation) values (?,?)")
 const SQL_SPEND_USER_VACATION = SQL("update user_vacation set vacation = vacation - 1 where vacation > 0 and user_id = ?")
 
 const SQL_SELECT_TIME_CONTROL = SQL("select * from time_control_view")
+const SQL_SELECT_TIME_CONTROL_DEADLINE = SQL("select * from time_control_deadline_view")
 
 const SQL_INSERT_TIMEOUT = SQL("insert or ignore into user_timeout (user_id, game_id) values (?, ?)")
 
@@ -2923,7 +2947,9 @@ function terminate_future_matches(game_id, user_id) {
 }
 
 function time_control_ticker() {
-	var users_on_vacation, games_to_timeout
+	var users_on_vacation
+	var games_to_timeout
+	var games_to_deadline
 
 	SQL_BEGIN.run()
 	try {
@@ -2953,6 +2979,16 @@ function time_control_ticker() {
 			}
 		}
 
+		games_to_deadline = SQL_SELECT_TIME_CONTROL_DEADLINE.all()
+		for (let item of games_to_deadline) {
+			if (item.is_opposed) {
+				console.log("DEADLINED GAME:", item.game_id, item.role)
+			} else {
+				console.log("DEADLINED GAME:", item.game_id, item.role, "(solo)")
+				SQL_DELETE_GAME.run(item.game_id)
+			}
+		}
+
 		SQL_COMMIT.run()
 	} catch (error) {
 		console.log(error)
@@ -2966,11 +3002,13 @@ function time_control_ticker() {
 		send_vacation_notification(user, user.vacation - 1)
 	}
 
-	for (let item of games_to_timeout) {
-		if (item.is_opposed) {
-			do_resign(item.game_id, item.role, ".timeout", item.role + " timed out.")
-		}
-	}
+	for (let item of games_to_timeout)
+		if (item.is_opposed)
+			do_resign(item.game_id, item.role, ".timeout", item.role.split(",").join(" and ") + " timed out.")
+
+	for (let item of games_to_deadline)
+		if (item.is_opposed)
+			do_resign(item.game_id, item.role, ".timeout", item.role.split(",").join(" and ") + " timed out.")
 }
 
 // Run time control checks every 13 minutes.
@@ -3205,7 +3243,7 @@ const TM_DELETE_QUEUE = SQL("delete from tm_queue where user_id=? and seed_id=? 
 const TM_INSERT_QUEUE = SQL("insert or ignore into tm_queue (user_id, seed_id, level) values (?,?,?)")
 
 const TM_DELETE_QUEUE_SEED = SQL("delete from tm_queue where seed_id=? and level=?")
-
+const TM_SELECT_SEED_ALL = SQL("select * from tm_seeds order by title_id, seed_name")
 const TM_SELECT_SEED = SQL("select * from tm_seeds where seed_id = ?")
 const TM_SELECT_SEED_BY_NAME = SQL("select * from tm_seeds where seed_name = ?")
 const TM_SELECT_POOL_BY_NAME = SQL("select * from tm_pools where pool_name=?")
@@ -3322,92 +3360,19 @@ const TM_SELECT_PLAYERS_MP = SQL(`
 		points desc, son desc, name
 `)
 
-const TM_FIND_NEXT_SEQUENTIAL_GAMES_TO_START = SQL(`
-	with
-		next_round as (
-			select
-				pool_id,
-				round,
-				coalesce(
-					lag( sum(status > 1) > 0 ) over ( partition by pool_id order by round ),
-					true
-				) as is_round_ready
-			from
-				tm_rounds
-				join games using(game_id)
-				join tm_pools using(pool_id)
-				join tm_seeds using(seed_id)
-			where
-				not is_finished
-				and not is_concurrent
-			group by
-				pool_id, round
-		)
-		select
-			games.game_id,
-			games.title_id,
-			games.scenario,
-			games.options
-		from
-			next_round
-			join tm_rounds using(pool_id, round)
-			join games using(game_id)
-		where
-			is_round_ready
-			and status = 0
-`)
-
-const TM_FIND_NEXT_CONCURRENT_GAMES_TO_START = SQL(`
-	with
-		-- all future games in concurrent pools
-		pool_games as (
-			select
-				pool_id, games.*
-			from
-				tm_rounds
-				join games using(game_id)
-				join tm_pools using(pool_id)
-				join tm_seeds using(seed_id)
-			where
-				not is_finished
-				and is_concurrent
-				and status = 0
-		),
-		-- which players are busy with what roles in the pool
-		pool_players as (
-			select
-				pool_id, role, user_id, sum(status = 1) as n_busy
-			from
-				tm_rounds
-				join games using(game_id)
-				join players using(game_id)
-			group by
-				pool_id, role, user_id
-		),
-		-- candidate games to start
-		candidates as (
-			select
-				pool_id,
-				game_id,
-				title_id,
-				scenario,
-				options
-			from
-				pool_games
-				join players using(game_id)
-				join pool_players using(pool_id, user_id, role)
-			group by
-				game_id
-			having
-				sum(n_busy) < player_count
-			order by
-				sum(n_busy)
-		)
-		-- starting a game will change player availability for the other games in the same pool
-		-- select one candidate from each pool to start
-		select * from candidates a where a.game_id in (
-			select b.game_id from candidates b where a.pool_id = b.pool_id limit 1
-		)
+const TM_SELECT_READY_GAMES = SQL(`
+	select
+		game_id,
+		title_id,
+		scenario,
+		options
+	from
+		games
+	where
+		status = 0
+		and is_match
+		and is_ready
+		and julianday() > julianday(ctime)
 `)
 
 const TM_SELECT_ENDED_POOLS = SQL(`
@@ -3709,7 +3674,11 @@ function create_tournament_game(seed, pool_id, round, pool_name, players) {
 	if (players.length !== roles.length)
 		throw new Error("player count mismatch in tournament setup")
 
-	let game_id = SQL_INSERT_GAME.get(
+	let now = julianday_from_epoch(Date.now())
+	let ctime = now + seed.stagger * (round-1)
+	let xtime = ctime + seed.deadline
+
+	let game_id = SQL_INSERT_GAME_MATCH.get(
 		0, // owner
 		seed.title_id,
 		seed.scenario,
@@ -3719,7 +3688,8 @@ function create_tournament_game(seed, pool_id, round, pool_name, players) {
 		0, // is_private
 		0, // is_random
 		pool_name, // notice
-		1 // is_match
+		ctime,
+		xtime
 	)
 
 	for (let i = 0; i < players.length; ++i)
@@ -3832,24 +3802,9 @@ function tm_start_ready_seeds() {
 }
 
 function tm_start_ready_games() {
-	// start games that are ready
-	var games, game
-
-	games = TM_FIND_NEXT_SEQUENTIAL_GAMES_TO_START.all()
-	if (games.length > 0) {
-		for (game of games)
-			start_game(game)
-	}
-
-	for (;;) {
-		games = TM_FIND_NEXT_CONCURRENT_GAMES_TO_START.all()
-		if (games.length > 0) {
-			for (game of games)
-				start_game(game)
-		} else {
-			break
-		}
-	}
+	// start scheduled tournament games
+	for (var game of TM_SELECT_READY_GAMES.all())
+		start_game(game)
 }
 
 function tournament_ticker() {
@@ -4109,12 +4064,16 @@ function on_resign(socket) {
 	}
 }
 
-function get_resign_result(game, role) {
+function get_resign_result(game, losers) {
 	if (game.player_count < 2)
 		return "None"
-	return get_game_roles(game.title_id, game.scenario, game.options)
-		.filter(r => r !== role)
-		.join(", ")
+	var roles = get_game_roles(game.title_id, game.scenario, game.options)
+	var winners = roles.filter(x => losers !== x && !losers.includes(x))
+	if (winners.length === 0)
+		return "None"
+	if (winners.length === 1)
+		return winners[0]
+	return winners.join(", ")
 }
 
 function do_resign(game_id, role, replay_action, message) {

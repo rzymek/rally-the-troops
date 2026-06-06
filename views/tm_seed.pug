@@ -43,6 +43,14 @@ html
 						td #{seed.match_count} concurrent
 					else
 						td #{seed.match_count} sequential
+
+				tr
+					td Stagger
+					td #{seed.stagger} days
+				tr
+					td Deadline
+					td #{seed.deadline} days per round
+
 				if seed.seed_notice
 					tr
 						td Notice

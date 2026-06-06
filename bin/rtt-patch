@@ -134,8 +134,13 @@ function get_game_roles(rules, scenario, options) {
 	return roles
 }
 
-function get_resign_result(roles, role) {
-	return roles.filter(r => r !== role).join(", ")
+function get_resign_result(roles, losers) {
+	var winners = roles.filter(x => losers !== x && !losers.includes(x))
+	if (winners.length === 0)
+		return "None"
+	if (winners.length === 1)
+		return winners[0]
+	return winners.join(", ")
 }
 
 function finish_game(rules, state, result, message) {
@@ -223,7 +228,7 @@ function patch_game(game_id, {validate_actions=true, save_snaps=true, delete_und
 				finish_game(rules, state, get_resign_result(roles, item.role), item.role + " resigned.")
 				break
 			case ".timeout":
-				finish_game(rules, state, get_resign_result(roles, item.role), item.role + " timed out.")
+				finish_game(rules, state, get_resign_result(roles, item.role), item.role.split(",").join(" and ") + " timed out.")
 				break
 			default:
 				if (validate_actions) {

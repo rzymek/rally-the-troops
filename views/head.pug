@@ -112,7 +112,10 @@ mixin gamelist(list,hide_title=0)
 								div Players: <span class="error">Nobody</span>
 							case item.status
 								when 0
-									div Created: #{human_date(item.ctime)}
+									if item.is_match
+										div Starting #{human_date(item.ctime)}
+									else
+										div Created: #{human_date(item.ctime)}
 								when 1
 									div Moves: #{item.moves}
 									div Last move: #{human_date(item.mtime)}

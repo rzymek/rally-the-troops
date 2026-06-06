@@ -455,6 +455,7 @@ create table if not exists games (
 
 	ctime datetime default current_timestamp,
 	mtime datetime default current_timestamp,
+	xtime datetime,
 	moves integer default 0,
 	active text,
 	result text,
@@ -536,6 +537,7 @@ create table if not exists players (
 	is_invite integer,
 	is_active boolean,
 	active_time real, -- julianday
+	time_used real default 0,
 	clock real,
 	score integer,
 	primary key (game_id, role)
@@ -613,6 +615,29 @@ create view time_control_view as
 		and is_active
 		and clock - (julianday() - julianday(players.active_time)) < 0
 	;
+
+drop view if exists time_control_deadline_view;
+create view time_control_deadline_view as
+	with
+		mm as (
+			select game_id, max(time_used) as time_used from players group by game_id
+		)
+	select
+		games.game_id,
+		group_concat(players.role) as role,
+		games.is_opposed,
+		games.is_match
+	from
+		games
+		join mm on mm.game_id = games.game_id
+		join players on players.game_id = games.game_id and players.time_used = mm.time_used
+	where
+		status = 1
+		and datetime() > xtime
+	group by
+		games.game_id
+	;
+
 
 -- Export game state as JSON
 
@@ -717,15 +742,18 @@ create table if not exists tm_seeds (
 	options text,
 	player_count integer,
 
-	pace integer default 2,
+	pace integer default 0,
 
 	pool_size integer default 3,
 	match_count integer default 4,
 	is_concurrent boolean default 1,
 
+	stagger real default 7,
+	deadline real default 30,
+
 	level_count integer default 1,
 
-	is_open boolean default 1
+	is_open boolean default 0
 );
 
 create table if not exists tm_banned (
@@ -1070,6 +1098,7 @@ begin
 		players
 	set
 		active_time = null,
+		time_used = time_used + (julianday() - julianday(old.active_time)),
 		clock = (
 			case (select pace from games where games.game_id = players.game_id)
 				when 1 then min(clock - (julianday() - julianday(old.active_time)) + 4 / 24.0, 3)

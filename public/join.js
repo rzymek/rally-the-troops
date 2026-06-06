@@ -145,12 +145,28 @@ function julianday_from_epoch(x) {
 	return x / 86400000 + 2440587.5
 }
 
+function future_date(date, days) {
+	var seconds = days * 86400
+	if (days < 1) {
+		if (seconds < 60) return "now"
+		if (seconds < 120) return "in 1 minute"
+		if (seconds < 3600) return "in " + Math.floor(seconds / 60) + " minutes"
+		if (seconds < 7200) return "in 1 hour"
+		if (seconds < 86400) return "in " + Math.floor(seconds / 3600) + " hours"
+	}
+	if (days < 2) return "tomorrow"
+	if (days < 7) return "in " + Math.round(days) + " days"
+	return new Date(epoch_from_julianday(date)).toISOString().substring(0,10)
+}
+
 function human_date(date) {
 	if (typeof date === "string")
 		date = julianday_from_epoch(Date.parse(date + "Z"))
 	if (typeof date !== "number")
 		return "never"
 	var days = julianday_from_epoch(Date.now()) - date
+	if (days < 0)
+		return future_date(date, -days)
 	var seconds = days * 86400
 	if (days < 1) {
 		if (seconds < 60) return "now"
@@ -317,6 +333,8 @@ function create_game_list() {
 	if (game.status === 0) {
 		if (game.owner_id)
 			create_game_list_item(list, "Created", human_date(game.ctime) + " by " + user_link(game.owner_name))
+		else if (game.is_match)
+			create_game_list_item(list, "Starting", human_date(game.ctime))
 		else
 			create_game_list_item(list, "Created", human_date(game.ctime))
 	} else {
@@ -338,6 +356,9 @@ function create_game_list() {
 		else
 			create_game_list_item(list, "Finished", human_date(game.mtime))
 		create_game_list_item(list, "Result", game.result)
+	} else {
+		if (game.xtime)
+			create_game_list_item(list, "Deadline", human_date(game.xtime))
 	}
 }
 
