@@ -3862,6 +3862,157 @@ if (app.locals.ENABLE_TOURNAMENTS) {
 	setInterval(tournament_ticker, 97 * 1000)
 }
 
+const TM_INSERT_SEED = SQL(`
+	insert into tm_seeds
+		(
+			seed_name,
+			title_id, scenario, options, player_count,
+			pool_size, match_count, is_concurrent,
+			is_open
+		) values (
+			:seed_name,
+			:title_id, :scenario, :options, :player_count,
+			:pool_size, :match_count, :is_concurrent,
+			false
+		)
+		returning seed_id
+`).pluck()
+
+const TM_UPDATE_SEED = SQL(`
+	update tm_seeds set
+		seed_name=:seed_name,
+		title_id=:title_id,
+		scenario=:scenario,
+		options=:options,
+		player_count=:player_count,
+		pace=:pace,
+		pool_size=:pool_size,
+		match_count=:match_count,
+		is_concurrent=:is_concurrent,
+		stagger=:stagger,
+		deadline=:deadline,
+		level_count=:level_count,
+		is_open=:is_open
+	where seed_id=:seed_id
+`)
+
+app.get("/tm/edit", must_be_administrator, function (req, res) {
+	let seeds = TM_SELECT_SEED_ALL.all()
+	res.render("tm_edit_list.pug", { user: req.user, seeds })
+})
+
+app.post("/tm/edit/new", must_be_administrator, function (req, res) {
+	var seed_name = req.body.seed_name
+	var title_id = req.body.title_id
+	var scenario = RULES[title_id].tournament_scenario ?? RULES[title_id].scenarios[0] ?? "Standard"
+	var options = RULES[title_id].tournament_options ?? {}
+	var player_count = get_game_roles(title_id, scenario, options).length
+
+	var pool_size = 5, match_count = 4, is_concurrent = 1
+
+	if (player_count === 3 && TITLE_TABLE[title_id].is_symmetric)
+		pool_size = 9, match_count = 4, is_concurrent = 0
+	else if (player_count === 3)
+		pool_size = 9, match_count = 3, is_concurrent = 0
+
+	else if (player_count === 4 && TITLE_TABLE[title_id].is_symmetric)
+		pool_size = 16, match_count = 5, is_concurrent = 0
+	else if (player_count === 4)
+		pool_size = 16, match_count = 4, is_concurrent = 0
+
+	else if (player_count === 5)
+		pool_size = 25, match_count = 5, is_concurrent = 0
+	else if (player_count === 6)
+		pool_size = 16, match_count = 6, is_concurrent = 0
+	else if (player_count === 7)
+		pool_size = 15, match_count = 7, is_concurrent = 0
+
+	TM_INSERT_SEED.run({
+		seed_name,
+		title_id, scenario, options: JSON.stringify(options), player_count,
+		pool_size, match_count, is_concurrent
+	})
+	res.redirect("/tm/edit/" + seed_name)
+})
+
+function preview_match_incidence(v, rounds) {
+	var i, k, m
+	var incidence = []
+	for (i = 0; i < v; ++i)
+		incidence[i] = new Array(v).fill(0)
+	for (m of rounds.flat()) {
+		for (i = 0; i < m.length; ++i) {
+			for (k = i+1; k < m.length; ++k) {
+				incidence[m[i]][m[k]]++
+				incidence[m[k]][m[i]]++
+			}
+		}
+	}
+	return incidence
+}
+
+function preview_match_concurrency(v, rounds) {
+	var concurrency = []
+	for (var r of rounds) {
+		var row = new Array(v).fill(0)
+		for (var m of r)
+			for (var p of m)
+				row[p]++
+		concurrency.push(row)
+	}
+	return concurrency
+}
+
+function preview_match_repeats(v, k, rounds) {
+	var i, m
+	var repeats = []
+	for (i = 0; i < k; ++i)
+		repeats[i] = new Array(v).fill(0)
+	for (m of rounds.flat())
+		for (i = 0; i < m.length; ++i)
+			repeats[i][m[i]]++
+	return repeats
+}
+
+app.get("/tm/edit/:seed_name", must_be_administrator, function (req, res) {
+	var seed_name = req.params.seed_name
+	var seed = TM_SELECT_SEED_BY_NAME.get(seed_name)
+	if (!seed)
+		return res.status(404).send("Tournament seed not found.")
+	var preview, number_preview, incidence, concurrency, repeats
+	try {
+		number_preview = make_rounds(seed, new Array(seed.pool_size).fill(0).map((_,i)=>i))
+		preview = make_rounds(seed, new Array(seed.pool_size).fill(0).map((_,i)=>String.fromCharCode(65+i)))
+		var n = preview.flat().flat().join("").match(/A/g).length
+		if (n !== seed.match_count)
+			throw new Error("match count mismatch (should be " + n + ")")
+		incidence = preview_match_incidence(seed.pool_size, number_preview)
+		concurrency = preview_match_concurrency(seed.pool_size, number_preview)
+		repeats = preview_match_repeats(seed.pool_size, seed.player_count, number_preview)
+	} catch (error) {
+		console.log(error)
+		preview = error.toString()
+	}
+	res.render("tm_edit.pug", { user: req.user, seed, preview, incidence, concurrency, repeats })
+})
+
+app.post("/tm/edit", must_be_administrator, function (req, res) {
+	let seed = req.body
+	seed.options = JSON.stringify(JSON.parse(seed.options))
+	seed.player_count = get_game_roles(seed.title_id, seed.scenario, seed.options).length
+	seed.seed_id |= 0
+	seed.pool_size |= 0
+	seed.match_count |= 0
+	seed.is_concurrent |= 0
+	seed.is_open |= 0
+	seed.level_count |= 0
+	seed.pace |= 0
+	seed.stagger = Number(seed.stagger)
+	seed.deadline = Number(seed.deadline)
+	TM_UPDATE_SEED.run(seed)
+	res.redirect("/tm/edit/" + seed.seed_name)
+})
+
 /*
  * GAME SERVER
  */
