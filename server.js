@@ -1910,14 +1910,6 @@ app.get("/games/active", must_be_logged_in, function (req, res) {
 	res.render("games_active.pug", { who: req.user, games, seeds, active_pools, finished_pools })
 })
 
-app.get("/tm/active", must_be_logged_in, function (req, res) {
-	let user_id = req.user.user_id
-	let seeds = TM_SEED_LIST_USER.all(user_id)
-	let active_pools = TM_POOL_LIST_USER_ACTIVE.all(user_id)
-	let finished_pools = TM_POOL_LIST_USER_RECENT_FINISHED.all(user_id)
-	res.render("tm_active.pug", { who: req.user, seeds, active_pools, finished_pools })
-})
-
 app.get("/games/finished", must_be_logged_in, function (req, res) {
 	let games = QUERY_LIST_FINISHED_GAMES_OF_USER.all({ user_id: req.user.user_id })
 	let unread = SQL_SELECT_UNREAD_CHAT_GAMES.all(req.user.user_id)
