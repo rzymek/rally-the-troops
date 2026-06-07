@@ -214,6 +214,10 @@ article hr + p { font-style: italic; }
 /* COMMON ELEMENTS */
 
 a { color: var(--color-blue); }
+a.red { text-decoration: none; color: var(--color-red); }
+a.green { text-decoration: none; color: var(--color-green); }
+a.command { text-decoration: none; color: var(--color-black); }
+a.command:hover { color: var(--color-blue); }
 nav a, a.black { color: var(--color-black); text-decoration: none; }
 nav a:hover, a.black:hover { color: var(--color-blue); text-decoration: underline; }
 
@@ -305,31 +309,22 @@ table.striped tr:nth-child(2n) {
 	background-color: var(--color-table-stripe);
 }
 
+td.c, th.c { text-align: center; }
 td.r, th.r { text-align: right; }
 td.w, th.w { white-space: nowrap; }
 td.n, th.n { width: 0px; white-space: nowrap; text-align: right; }
 
 /* TOURNAMENT TABLES */
 
-table.seeds { table-layout: fixed }
-table.seeds td:nth-child(n+2) { width: 42px; text-align: center; }
-table.seeds td:last-child { width: 20px; }
-table.seeds tbody td:nth-child(5) { border-left: 1px solid #0004; }
-table.seeds tbody td:first-child { border-right: 1px solid #0004; }
-table.seeds tbody td:last-child { border-left: 1px solid #0004; }
-
-table.seeds a { color: var(--color-black); text-decoration: none; }
-table.seeds a:hover { color: var(--color-blue); text-decoration: underline; }
-table.pools a { color: var(--color-black); text-decoration: none; }
-table.pools a:hover { color: var(--color-blue); text-decoration: underline; }
-
-@media (max-width: 650px) { table.seeds.stats td:nth-child(2) { display: none } }
-@media (max-width: 600px) { table.seeds.stats td:nth-child(3) { display: none } }
-@media (max-width: 550px) { table.seeds.stats td:nth-child(4) { display: none } }
-@media (max-width: 500px) {
-	table.seeds td:nth-child(n+2) { width: 36px; }
-	table.seeds td:last-child { width: 18px; }
+table.tm img {
+	border: var(--thin-border);
+	max-width: 36px; max-height: 36px;
+	margin: auto;
+	display: block;
 }
+table.tm td:has(img) { width: 36px; padding-right: 0; }
+table.tm td { vertical-align: middle }
+table.tm td:last-child, table.tm th:last-child { text-align: right }
 
 /* FORUM AND MESSAGE POSTS */
 

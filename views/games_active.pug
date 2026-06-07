@@ -27,9 +27,33 @@ html
 				h2 Open
 				+gamelist(open_games)
 
+			if (queues && queues.length > 0) || (active_pools && active_pools.length > 0) || (finished_pools && finished_pools.length > 0)
+				h2 Tournaments
 
-			if ENABLE_TOURNAMENTS
-				+tourlist(seeds, active_pools, finished_pools)
+				if queues && queues.length > 0
+					table.tm.wide.striped
+						thead
+							tr
+								th(colspan=5) Registrations
+								th #{TM_ICON_QUEUE}
+						tbody
+							each seed in queues
+								tr
+									td
+										//a.black(href="/tm/seed/" + seed.seed_name)= seed.seed_name + "." + seed.level
+										a.black(href="/tm/seed/" + seed.seed_name)= seed.seed_name
+									td level #{seed.level}
+									td #{seed.queue_count} queued
+									if seed.ticket_count
+										td #{seed.ticket_count} tickets
+									else
+										td
+									td !{TM_ICON_TICKET}
+									td
+										a(href="/tm/withdraw/"+seed.seed_id+"/"+seed.level) Withdraw
+
+				+poollist(active_pools, "Active", TM_ICON_ACTIVE)
+				+poollist(finished_pools, "Finished", TM_ICON_FINISHED)
 
 			if move_games.length > 0
 				h2 Move

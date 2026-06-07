@@ -984,7 +984,6 @@ app.get("/user/:who_name", must_be_logged_in, function (req, res) {
 		let games = QUERY_LIST_PUBLIC_GAMES_OF_USER.all({ user_id: who.user_id })
 		let ratings = SQL_USER_RATINGS.all(who.user_id)
 		annotate_games(games, 0, null, null)
-		let seeds = TM_SEED_LIST_USER.all(who.user_id)
 		let active_pools = TM_POOL_LIST_USER_ACTIVE.all(who.user_id)
 		let finished_pools = TM_POOL_LIST_USER_RECENT_FINISHED.all(who.user_id)
 		let contact = 0
@@ -997,7 +996,6 @@ app.get("/user/:who_name", must_be_logged_in, function (req, res) {
 			tm_banned,
 			contact,
 			games,
-			seeds,
 			active_pools,
 			finished_pools,
 			ratings,
@@ -1930,11 +1928,11 @@ app.get("/games/active", must_be_logged_in, function (req, res) {
 	let unseen = SQL_SELECT_UNSEEN_GAME_LIST.all(user_id)
 	annotate_games(games, user_id, unread, unseen)
 
-	let seeds = TM_SEED_LIST_USER.all(user_id)
+	let queues = TM_SELECT_QUEUES.all(user_id)
 	let active_pools = TM_POOL_LIST_USER_ACTIVE.all(user_id)
 	let finished_pools = TM_POOL_LIST_USER_RECENT_FINISHED.all(user_id)
 
-	res.render("games_active.pug", { who: req.user, games, seeds, active_pools, finished_pools })
+	res.render("games_active.pug", { who: req.user, games, queues, active_pools, finished_pools })
 })
 
 app.get("/games/finished", must_be_logged_in, function (req, res) {
@@ -1985,9 +1983,12 @@ app.get("/games/public", must_be_logged_in, function (req, res) {
 	annotate_games(open_games, user_id, unread, null)
 	annotate_games(replacement_games, user_id, unread, null)
 
+	var seeds = TM_SELECT_SEEDS_BY_USER.all({user_id: req.user.user_id})
+
 	res.render("games_public.pug", {
 		open_games,
 		replacement_games,
+		seeds
 	})
 })
 
@@ -2014,7 +2015,7 @@ function get_title_page(req, res, title_id) {
 	annotate_games(active_games, user_id, unread, null)
 	annotate_games(finished_games, user_id, unread, unseen)
 
-	let seeds = user_id ? TM_SEED_LIST_TITLE_WITH_TICKETS.all(user_id, title_id) : TM_SEED_LIST_TITLE.all(title_id)
+	let seeds = TM_SELECT_SEEDS_BY_TITLE.all({user_id, title_id})
 	let pools = TM_POOL_LIST_TITLE_ACTIVE.all(title_id)
 
 	res.render("title.pug", {
@@ -2971,6 +2972,7 @@ function time_control_ticker() {
 					console.log("BANNED FROM TOURNAMENTS:", item.user_id)
 					TM_INSERT_BANNED.run(item.user_id)
 					TM_DELETE_QUEUE_USER.run(item.user_id)
+					TM_DELETE_TICKETS_USER.run(item.user_id)
 					terminate_future_matches(item.game_id, item.user_id)
 				}
 			} else {
@@ -3028,6 +3030,7 @@ const TM_SELECT_BANNED = SQL("select * from tm_banned where user_id=?")
 const TM_INSERT_BANNED = SQL("insert or ignore into tm_banned (user_id, time) values (?, datetime())")
 
 const TM_DELETE_QUEUE_USER = SQL("delete from tm_queue where user_id=?")
+const TM_DELETE_TICKETS_USER = SQL("delete from tm_tickets where user_id=?")
 
 const TM_DELETE_QUEUE_INACTIVE = SQL(`
 	delete from tm_queue where exists (
@@ -3038,41 +3041,95 @@ const TM_DELETE_QUEUE_INACTIVE = SQL(`
 	)
 `)
 
+const TM_SELECT_SEEDS_BY_USER = SQL(`
+	with tt as (
+		select
+			user_id, title_id, is_open, seed_id, seed_name, level, count as ticket_count
+		from
+			tm_tickets
+			join tm_seeds using(seed_id)
+		where
+			is_open and
+			user_id=:user_id and level > 1 and level <= level_count
+		union all
+		select
+			user_id, title_id, is_open, seed_id, seed_name, 1 as level, -1 as ticket_count
+		from
+			tm_seeds
+			join ratings using(title_id)
+		where
+			is_open and
+			user_id=:user_id and count >= 2
+	)
+	select
+		title_id, is_open, seed_id, seed_name, level, ticket_count
+		, exists ( select 1 from tm_queue qq where tt.user_id=qq.user_id and tt.seed_id=qq.seed_id and tt.level=qq.level ) as is_queued
+		, ( select count(1) from tm_queue qq where tt.seed_id=qq.seed_id and tt.level=qq.level ) as queue_count
+	from
+		tt
+	order by seed_name, level
+`)
+
+const TM_SELECT_SEEDS_BY_TITLE = SQL(`
+	with tt as (
+		select
+			user_id, title_id, is_open, seed_id, seed_name, level, count as ticket_count
+		from
+			tm_tickets
+			join tm_seeds using(seed_id)
+		where
+			title_id=:title_id and user_id=:user_id and level > 1 and level <= level_count
+		union all
+		select
+			:user_id as user_id, title_id, is_open, seed_id, seed_name
+			, 1 as level
+			, exists (select 1 from ratings where ratings.title_id=tm_seeds.title_id and user_id=:user_id and count >= 2) as ticket_count
+		from
+			tm_seeds
+		where
+			title_id=:title_id
+	)
+	select
+		title_id, is_open, seed_id, seed_name, level, ticket_count
+		, exists ( select 1 from tm_queue qq where tt.user_id=qq.user_id and tt.seed_id=qq.seed_id and tt.level=qq.level ) as is_queued
+		, (select count(1) from tm_queue qq join users using(user_id) where tt.seed_id=qq.seed_id and tt.level=qq.level ) as queue_count
+	from
+		tt
+	order by seed_name, level
+`)
+
+const TM_SELECT_QUEUES = SQL(`
+	select
+		seed_id, seed_name, level
+		, ( select count from tm_tickets tt where tm_queue.seed_id=tt.seed_id and tm_queue.level=tt.level and tm_queue.user_id=tt.user_id ) as ticket_count
+		, ( select count(1) from tm_queue qq where tm_queue.seed_id=qq.seed_id and tm_queue.level=qq.level ) as queue_count
+		, 1 as is_queued
+	from
+		tm_queue
+		join tm_seeds using(seed_id)
+	where
+		user_id=?
+`)
+
+const TM_HAS_TICKET = SQL(`
+	select coalesce( (select count from tm_tickets where user_id=? and seed_id=? and level=?), 0 )
+`).pluck()
+
+const TM_GAIN_TICKET = SQL(`
+	insert into tm_tickets (user_id, seed_id, level, count) values (?, ?, ?, 5)
+	on conflict do update set count = min(count + 5, 10)
+`)
+
+const TM_SPEND_TICKET = SQL("update tm_tickets set count=count-1 where user_id=? and seed_id=? and level=?")
+
 const TM_SELECT_USER_HAS_PLAYED_TITLE = SQL(`
-	select exists ( select 1 from ratings where user_id=? and title_id=? and count >= ? )
+	select exists ( select 1 from ratings where user_id=? and title_id=? and count >= 2 )
 `).pluck()
 
 const TM_SELECT_SEED_IS_OPEN = SQL(`
 	select is_open or exists ( select 1 from tm_queue_view where tm_queue_view.seed_id = tm_seeds.seed_id )
 	from tm_seeds
 	where seed_id=?
-`).pluck()
-
-const TM_MAY_JOIN_SEED_LEVEL = SQL(`
-	with
-		win_cte as (
-			select
-				count(1) as n_win
-			from
-				tm_winners
-				join tm_pools using(pool_id)
-			where
-				level = @level - 1 and user_id = @user_id and seed_id = @seed_id
-		),
-		play_cte as (
-			select
-				count(distinct pool_id) as n_play
-			from
-				tm_rounds
-				join tm_pools using(pool_id)
-				join players using(game_id)
-			where
-				level = @level and user_id = @user_id and seed_id = @seed_id
-		)
-	select
-		coalesce(n_win, 0) > coalesce(n_play, 0) as may_join
-	from
-		win_cte, play_cte
 `).pluck()
 
 const TM_COUNT_QUEUE = SQL(`
@@ -3094,7 +3151,7 @@ function check_join_seed_limit(user, seed) {
 	if (!DEBUG) {
 		if (!SQL_SELECT_USER_VERIFIED.get(user.user_id))
 			return "Verify your mail address to join this tournament."
-		if (!TM_SELECT_USER_HAS_PLAYED_TITLE.get(user.user_id, seed.title_id, 2))
+		if (!TM_SELECT_USER_HAS_PLAYED_TITLE.get(user.user_id, seed.title_id))
 			return "You need to play more before you can join this tournament."
 	}
 
@@ -3108,11 +3165,9 @@ function check_join_seed_limit(user, seed) {
 }
 
 function may_join_seed_level(user_id, seed_id, level) {
-	if (level === 1)
-		return true
-	if (level >= 2)
-		return TM_MAY_JOIN_SEED_LEVEL.get({ level, user_id, seed_id })
-	return false
+	if (level < 2)
+		return 1
+	return TM_HAS_TICKET.get(user_id, seed_id, level)
 }
 
 const TM_SEED_STATS = SQL(`
@@ -3136,47 +3191,6 @@ const TM_SEED_STATS = SQL(`
 	join tm_pools using(seed_id)
 	join uu using(seed_id)
 	group by seed_name
-`)
-
-const TM_SEED_LIST_ALL = SQL(`
-	select *
-	from tm_seed_queue_view as qq
-	where is_open or q1 > 0 or q2 > 0 or q3 > 0
-	order by seed_name
-`)
-
-const TM_SEED_LIST_TITLE = SQL(`
-	select *
-	from tm_seed_stat_view as ss
-	left join tm_seed_queue_view as qq using(seed_id)
-	where ss.title_id=?
-	order by is_open desc, seed_name
-`)
-
-const TM_SEED_LIST_ALL_WITH_TICKETS = SQL(`
-	select *
-	from tm_seed_queue_view as qq
-	left join ( select * from tm_seed_ticket_view where user_id=? ) using(seed_id)
-	where is_open or q1 > 0 or q2 > 0 or q3 > 0
-	order by seed_name
-`)
-
-const TM_SEED_LIST_TITLE_WITH_TICKETS = SQL(`
-	select *
-	from tm_seed_stat_view as ss
-	left join tm_seed_queue_view as qq using(seed_id)
-	left join ( select * from tm_seed_ticket_view where user_id=? ) using(seed_id)
-	where ss.title_id=?
-	order by is_open desc, seed_name
-`)
-
-const TM_SEED_LIST_USER = SQL(`
-	select *
-	from tm_seed_ticket_view as tt
-	join tm_seed_queue_view as qq using(seed_id)
-	join tm_seed_stat_view as ss using(seed_id)
-	where tt.user_id = ?
-	order by is_open desc, seed_name
 `)
 
 const TM_POOL_LIST_USER_ACTIVE = SQL(`
@@ -3215,11 +3229,6 @@ const TM_POOL_LIST_USER_ALL_FINISHED = SQL(`
 const TM_POOL_LIST_TITLE_ACTIVE = SQL(`
 	select tm_pool_active_view.* from tm_pool_active_view join tm_seeds using(seed_id)
 	where tm_seeds.title_id = ?
-`)
-
-const TM_POOL_LIST_TITLE_FINISHED = SQL(`
-	select tm_pool_finished_view.* from tm_pool_finished_view join tm_seeds using(seed_id)
-	where tm_seeds.title_id = ? and finish_date > date('now', '-14 days')
 `)
 
 const TM_POOL_LIST_SEED_ACTIVE = SQL("select * from tm_pool_active_view where seed_id = ?")
@@ -3295,15 +3304,23 @@ const TM_SELECT_GAMES = SQL(`
 
 const TM_SELECT_PLAYERS_IN_POOL = SQL(`
 	select
-		user_view.*
+		distinct user_view.*
 	from
 		tm_rounds
 		join players using(game_id)
 		join user_view using(user_id)
 	where
 		pool_id = ?
-	group by
-		user_id
+`)
+
+const TM_SELECT_WINNERS_IN_POOL = SQL(`
+	select
+		user_view.*
+	from
+		tm_winners
+		join user_view using(user_id)
+	where
+		pool_id = ?
 `)
 
 const TM_SELECT_PLAYERS_2P = SQL(`
@@ -3377,7 +3394,7 @@ const TM_SELECT_READY_GAMES = SQL(`
 
 const TM_SELECT_ENDED_POOLS = SQL(`
 	select
-		pool_id, pool_name
+		pool_id, pool_name, seed_id, level
 	from
 		tm_pools
 		join tm_rounds using(pool_id)
@@ -3452,12 +3469,14 @@ app.get("/tm/pool/:pool_name", must_be_logged_in, function (req, res) {
 	res.render("tm_pool.pug", { seed, pool, roles, players, games, games_by_round })
 })
 
-app.post("/tm/register/:seed_id/:level", must_be_logged_in, function (req, res) {
+app.all("/tm/register/:seed_id/:level", must_be_logged_in, function (req, res) {
 	let seed_id = req.params.seed_id | 0
 	let level = req.params.level | 0
 	let seed = TM_SELECT_SEED.get(seed_id)
 	if (!seed)
 		return res.status(404).send("Tournament seed not found.")
+	if (level > seed.level_count)
+		return res.status(401).send("Tournament does not have that many levels.")
 	let user_id = req.user.user_id
 	let limit = check_join_seed_limit(req.user, seed)
 	if (limit)
@@ -3468,7 +3487,7 @@ app.post("/tm/register/:seed_id/:level", must_be_logged_in, function (req, res) 
 	return res.redirect(req.headers.referer)
 })
 
-app.post("/tm/withdraw/:seed_id/:level", must_be_logged_in, function (req, res) {
+app.all("/tm/withdraw/:seed_id/:level", must_be_logged_in, function (req, res) {
 	let seed_id = req.params.seed_id | 0
 	let level = req.params.level | 0
 	let user_id = req.user.user_id
@@ -3657,6 +3676,7 @@ function create_tournament_pool(seed, level, players) {
 
 	for (let p of players) {
 		TM_DELETE_QUEUE.run(p, seed.seed_id, level)
+		TM_SPEND_TICKET.run(p, seed.seed_id, level)
 	}
 
 	for (let i = 0; i < rounds.length; ++i) {
@@ -3783,13 +3803,33 @@ function start_tournament_seed(seed_id, level) {
 }
 
 function tm_reap_pools() {
-	// reap pools that are finished (and notify players)
+	// reap pools that are finished (notify players and gain tickets)
 	let ended = TM_SELECT_ENDED_POOLS.all()
 	for (let item of ended) {
-		console.log("TM POOL FINISHED", item.pool_name)
-		TM_UPDATE_POOL_FINISHED.run(item.pool_id)
-
+		let seed = TM_SELECT_SEED.get(item.seed_id)
 		let players = TM_SELECT_PLAYERS_IN_POOL.all(item.pool_id)
+
+		console.log("TM POOL FINISHED", item.pool_name)
+
+		SQL_BEGIN.run()
+		try {
+			TM_UPDATE_POOL_FINISHED.run(item.pool_id)
+
+			if (seed.seed_name.startsWith("mc.")) {
+				let winners = TM_SELECT_WINNERS_IN_POOL.all(item.pool_id)
+				for (let winner of winners) {
+					if (item.level > 1)
+						TM_GAIN_TICKET.run(winner.user_id, item.seed_id, item.level)
+					TM_GAIN_TICKET.run(winner.user_id, item.seed_id, item.level+1)
+				}
+			}
+
+			SQL_COMMIT.run()
+		} finally {
+			if (db.inTransaction)
+				SQL_ROLLBACK.run()
+		}
+
 		for (let user of players)
 			send_tour_notification(user, item.pool_name, "Finished")
 	}

@@ -761,11 +761,18 @@ create table if not exists tm_banned (
 	time datetime default current_timestamp
 );
 
+create table if not exists tm_tickets (
+	user_id integer,
+	seed_id integer,
+	level integer,
+	count integer,
+	primary key (user_id, seed_id, level)
+);
+
 create table if not exists tm_queue (
 	user_id integer,
 	seed_id integer,
 	level integer,
-	is_paused boolean default 0,
 	time datetime default current_timestamp,
 	primary key (user_id, seed_id, level)
 );
@@ -812,46 +819,6 @@ create view tm_queue_view as
 		join user_last_seen using(user_id)
 	where
 		julianday() - julianday(atime) < 3
-	;
-
-drop view if exists tm_seed_stat_view;
-create view tm_seed_stat_view as
-	select
-		tm_seeds.*
-		, iif(level_count >= 3, sum(level=3), null) as n3
-		, iif(level_count >= 2, sum(level=2), null) as n2
-		, iif(level_count >= 1, sum(level=1), null) as n1
-		-- , iif(level_count >= 3, sum(level=3 and not is_finished), null) as a3
-		-- , iif(level_count >= 2, sum(level=2 and not is_finished), null) as a2
-		-- , iif(level_count >= 1, sum(level=1 and not is_finished), null) as a1
-	from tm_seeds
-	left join tm_pools using(seed_id)
-	group by seed_id
-	;
-
-drop view if exists tm_seed_queue_view;
-create view tm_seed_queue_view as
-	select
-		tm_seeds.*
-		, iif(level_count >= 3, sum(level=3), null) as q3
-		, iif(level_count >= 2, sum(level=2), null) as q2
-		, iif(level_count >= 1, sum(level=1), null) as q1
-	from tm_seeds
-	left join tm_queue_view using(seed_id)
-	group by seed_id
-	;
-
-drop view if exists tm_seed_ticket_view;
-create view tm_seed_ticket_view as
-	select
-		seed_id,
-		user_id,
-		iif(level_count >= 3, sum(level=3), null) as t3,
-		iif(level_count >= 2, sum(level=2), null) as t2,
-		iif(level_count >= 1, sum(level=1), null) as t1
-	from tm_seeds
-	join tm_queue_view using(seed_id)
-	group by seed_id, user_id
 	;
 
 drop view if exists tm_pool_active_view;
