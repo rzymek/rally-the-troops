@@ -54,7 +54,10 @@ html
 
 			+userstats(who, move_time, timeouts, ratings, tm_banned)
 
-			+tourlist(seeds, active_pools, finished_pools)
+			if (active_pools && active_pools.length > 0) || (finished_pools && finished_pools.length > 0)
+				h2 Tournaments
+				+poollist(active_pools, "Active", TM_ICON_ACTIVE)
+				+poollist(finished_pools, "Finished", TM_ICON_FINISHED)
 
 			if open_games.length > 0
 				h2 Invitations

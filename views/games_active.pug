@@ -12,28 +12,24 @@ html
 	head
 		include head
 		if user.waiting_games + user.waiting_chats > 0
-			title= "(" + (user.waiting_games + user.waiting_chats) + ") Games"
+			title= "(" + (user.waiting_games + user.waiting_chats) + ") Play"
 		else
-			title Games
+			title Play
 		if active_games.length > 0
 			meta(http-equiv="refresh" content=600)
 		script window.onunload=function(){}
 	body
 		include header
 		article.wide
-			h1 Your games
+			h1 Play
 
 			if open_games.length > 0
 				h2 Open
 				+gamelist(open_games)
 
-			p
-				a(href="/create") Create a new game
 
 			if ENABLE_TOURNAMENTS
 				+tourlist(seeds, active_pools, finished_pools)
-				p
-					a(href="/tm/list") Join a tournament
 
 			if move_games.length > 0
 				h2 Move

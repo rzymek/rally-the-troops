@@ -1,5 +1,5 @@
 <style>
-img { height: 18px; vertical-align: -3px; }
+article img { height: 18px; vertical-align: -3px; }
 </style>
 
 # Tips & Tricks

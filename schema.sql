@@ -14,6 +14,11 @@ insert or ignore into blacklist_name (name) values
 	('null')
 ;
 
+create table if not exists news (
+	header text,
+	content text
+);
+
 -- Titles --
 
 create table if not exists titles (

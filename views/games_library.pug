@@ -3,9 +3,7 @@ doctype html
 html
 	head
 		include head
-		+social(SITE_NAME, "Play historic board games on the web.")
-		meta(name="keywords" content="wargames, war games, block games")
-		title= SITE_NAME
+		title Library
 		style.
 			.list {
 				display: grid;
@@ -38,10 +36,10 @@ html
 		include header
 		article.wide
 
-			h1 Games
+			h1 Library
 
 			div.list
-				each title in TITLE_LIST
+				each title in library
 					unless title.is_hidden
 						a.black(href="/"+title.title_id)
 							img(src="/"+title.title_id+"/thumbnail.jpg")

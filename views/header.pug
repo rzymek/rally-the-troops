@@ -9,13 +9,12 @@ header
 		if user
 			if ENABLE_FORUM
 				a(href="/forum") Forum
-			if ENABLE_TOURNAMENTS
-				a(href="/tm/list") Tournaments
-			a(href="/games/public") Public
+			a(href="/games/library") Games
+			a(href="/games/public") Lobby
 			if user.waiting_games + user.waiting_chats > 0
-				a(href="/games/active") Games (#{user.waiting_games + user.waiting_chats})
+				a(href="/games/active") Play (#{user.waiting_games + user.waiting_chats})
 			else
-				a(href="/games/active") Games
+				a(href="/games/active") Play
 			a(href="/contacts") Friends
 			if user.unread > 0
 				a(href="/message/inbox") Inbox (#{user.unread})

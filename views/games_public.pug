@@ -3,13 +3,16 @@ doctype html
 html
 	head
 		include head
-		title Public room
+		title Lobby
 		if user
 			meta(http-equiv="refresh" content=900)
 	body
 		include header
 		article.wide
-			h1 Public room
+			h1 Lobby
+
+			p
+				a(href="/create") Create a new game
 
 			h2 Open
 			if open_games.length > 0
@@ -20,14 +23,3 @@ html
 			if replacement_games.length > 0
 				h2 Open (missing players)
 				+gamelist(replacement_games)
-
-			p
-				a(href="/create") Create a new game
-
-			if active_games.length > 0
-				h2 Recently active
-				+gamelist(active_games)
-
-			if finished_games.length > 0
-				h2 Recently finished
-				+gamelist(finished_games)

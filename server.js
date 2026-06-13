@@ -206,8 +206,6 @@ app.locals.SITE_URL = SITE_URL
 app.locals.SITE_THEME = process.env.SITE_THEME
 app.locals.SITE_ICON = process.env.SITE_ICON
 app.locals.SITE_IMPRINT = process.env.SITE_IMPRINT
-app.locals.ENABLE_MAIL = !!mailer
-app.locals.ENABLE_WEBHOOKS = !!WEBHOOKS
 app.locals.ENABLE_FORUM = process.env.FORUM | 0
 app.locals.ENABLE_TOURNAMENTS = process.env.TOURNAMENTS | 0
 app.locals.ENABLE_ARCHIVE = ENABLE_ARCHIVE
@@ -611,12 +609,32 @@ function must_be_moderator(req, res, next) {
 	return next()
 }
 
+function render_markdown(res, path, default_text, footer) {
+	var text
+	if (fs.existsSync(path))
+		text = fs.readFileSync(path, "utf-8")
+	else
+		text = default_text
+	var body = marked.parse(text)
+	var title = body.match(/<h1>([^>]*)<\/h1>/)?.[1] ?? path
+	res.render("markdown.pug", { title, body, footer })
+}
+
 app.get("/", function (req, res) {
-	res.render("index.pug")
+	var footer = []
+	if (!mailer)
+		footer.push("Mail notifications disabled.")
+	if (!WEBHOOKS)
+		footer.push("Webhook notifications disabled.")
+	render_markdown(res, "public/index.md", "# Index\nInsert contents of `public/index.md` here.\n", footer)
 })
 
 app.get("/about", function (req, res) {
-	res.render("about.pug")
+	render_markdown(res, "public/about.md", "# About\nInsert contents of `public/about.md` here.\n")
+})
+
+app.get("/games/library", function (req, res) {
+	res.render("games_library.pug", { library: TITLE_LIST })
 })
 
 app.post("/logout", function (req, res) {
@@ -1674,18 +1692,6 @@ const QUERY_LIST_PUBLIC_GAMES_REPLACEMENT = SQL(`
 	order by game_id desc
 	`)
 
-const QUERY_LIST_PUBLIC_GAMES_ACTIVE = SQL(`
-	select * from game_view_public where status = 1 and join_count = player_count
-	order by mtime desc
-	limit 12
-	`)
-
-const QUERY_LIST_PUBLIC_GAMES_FINISHED = SQL(`
-	select * from game_view_public where status = 2
-	order by mtime desc
-	limit 12
-	`)
-
 const QUERY_LIST_GAMES_OF_TITLE_OPEN = SQL(`
 	select * from game_view_public where title_id=? and status = 0 and join_count < player_count
 	and not exists ( select 1 from contacts where me = owner_id and you = ? and relation < 0 )
@@ -1949,28 +1955,20 @@ app.get("/tm/finished/:who_name", must_be_logged_in, function (req, res) {
 app.get("/games/public", must_be_logged_in, function (req, res) {
 	let user_id = 0
 	let unread = null
-	let unseen = null
 	if (req.user) {
 		user_id = req.user.user_id
 		unread = SQL_SELECT_UNREAD_CHAT_GAMES.all(req.user.user_id)
-		unseen = SQL_SELECT_UNSEEN_GAME_LIST.all(req.user.user_id)
 	}
 
 	let open_games = QUERY_LIST_PUBLIC_GAMES_OPEN.all(user_id)
 	let replacement_games = QUERY_LIST_PUBLIC_GAMES_REPLACEMENT.all(user_id)
-	let active_games = QUERY_LIST_PUBLIC_GAMES_ACTIVE.all()
-	let finished_games = QUERY_LIST_PUBLIC_GAMES_FINISHED.all()
 
 	annotate_games(open_games, user_id, unread, null)
 	annotate_games(replacement_games, user_id, unread, null)
-	annotate_games(active_games, user_id, unread, null)
-	annotate_games(finished_games, user_id, unread, unseen)
 
 	res.render("games_public.pug", {
 		open_games,
 		replacement_games,
-		active_games,
-		finished_games,
 	})
 })
 
@@ -1998,6 +1996,7 @@ function get_title_page(req, res, title_id) {
 	annotate_games(finished_games, user_id, unread, unseen)
 
 	let seeds = user_id ? TM_SEED_LIST_TITLE_WITH_TICKETS.all(user_id, title_id) : TM_SEED_LIST_TITLE.all(title_id)
+	let pools = TM_POOL_LIST_TITLE_ACTIVE.all(title_id)
 
 	res.render("title.pug", {
 		title,
@@ -2006,6 +2005,7 @@ function get_title_page(req, res, title_id) {
 		active_games,
 		finished_games,
 		seeds,
+		pools,
 	})
 }
 
@@ -3448,11 +3448,6 @@ const TM_SELECT_SEED_READY_MINI_CUP = SQL(`
 		count(1) >= pool_size
 `)
 
-app.get("/tm/list", must_be_logged_in, function (req, res) {
-	let seeds = req.user ? TM_SEED_LIST_ALL_WITH_TICKETS.all(req.user.user_id) : TM_SEED_LIST_ALL.all()
-	res.render("tm_list.pug", { seeds })
-})
-
 app.get("/tm/stats", must_be_logged_in, function (req, res) {
 	let seeds = TM_SEED_STATS.all()
 	res.render("tm_stats.pug", { seeds })
@@ -4471,17 +4466,14 @@ wss.on("connection", (socket, req) => {
  * DOCUMENTATION - MARKDOWN
  */
 
-const docs_prolog = `<!doctype html>
-<meta name="viewport" content="width=device-width">
-<link rel="stylesheet" href="/common/markdown.css">
-<title>TITLE</title>
-<body><article>`
-
-function render_markdown(path) {
-	var text = fs.readFileSync(path, "utf-8")
-	var html = marked.parse(text)
-	var title = html.match(/<h1>([^>]*)<\/h1>/)?.[1] ?? path
-	return docs_prolog.replace("TITLE", title) + html
+function render_docs(res, path) {
+	if (fs.existsSync(path)) {
+		var body = marked.parse(fs.readFileSync(path, "utf-8"))
+		var title = body.match(/<h1>([^>]*)<\/h1>/)?.[1] ?? path
+		res.render("docs.pug", { title, body })
+	} else {
+		res.status(404).send("Not found")
+	}
 }
 
 app.get("/docs", function (req, res) {
@@ -4492,22 +4484,14 @@ app.get("/docs/:file", function (req, res) {
 	var file = req.params.file
 	if (!file.endsWith(".md"))
 		file += ".md"
-	try {
-		res.send(render_markdown("docs/" + file))
-	} catch (error) {
-		res.status(404).send(error.message)
-	}
+	render_docs(res, "docs/" + file)
 })
 
 app.get("/docs/:dir/:file", function (req, res) {
 	var file = req.params.file
 	if (!file.endsWith(".md"))
 		file += ".md"
-	try {
-		res.send(render_markdown("docs/" + req.params.dir + "/" + file))
-	} catch (error) {
-		res.status(404).send(error.message)
-	}
+	render_docs(res, "docs/" + req.params.dir + "/" + file)
 })
 
 /*

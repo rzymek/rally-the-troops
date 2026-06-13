@@ -16,18 +16,6 @@ mixin altcha_widget()
 	if ALTCHA
 		altcha-widget(challengeurl="/altcha-challenge" hidelogo hidefooter auto="onsubmit" style="--altcha-border-radius:0")
 
-mixin social(title,description,game)
-	meta(property="og:title" content=title)
-	meta(property="og:type" content="website")
-	if game
-		meta(property="og:image" content=SITE_URL+"/"+game+"/cover.2x.jpg")
-	else
-		if SITE_ICON
-			meta(property="og:image" content=SITE_URL+"/images/"+SITE_ICON)
-		else
-			meta(property="og:image" content=SITE_URL+"/images/rally-the-troops.png")
-	meta(property="og:description" content=description)
-
 mixin gamecover(title_id)
 	a(href="/"+title_id)
 		img(src=`/${title_id}/cover.1x.jpg` srcset=`/${title_id}/cover.2x.jpg 2x`)

@@ -3,7 +3,6 @@ doctype html
 html
 	head
 		include head
-		+social(title.title_name, "Play " + title.title_name + " on the web.", title.title_id)
 		title= title.title_name
 	body
 		include header
@@ -32,9 +31,10 @@ html
 					h2 Open (missing players)
 					+gamelist(replacement_games, true)
 
-				if (seeds && seeds.length > 0)
+				if ((seeds && seeds.length > 0) || (pools && pools.length > 0))
 					h2 Tournaments
 					+seedlist_stat(seeds, "Mini Cup")
+					+poollist(pools, "Active")
 
 				if active_games.length > 0
 					h2 Recently active
