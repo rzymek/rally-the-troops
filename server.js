@@ -3170,11 +3170,7 @@ const TM_POOL_LIST_USER_ALL_FINISHED = SQL(`
 		)
 `)
 
-const TM_POOL_LIST_TITLE_ACTIVE = SQL(`
-	select tm_pool_active_view.* from tm_pool_active_view join tm_seeds using(seed_id)
-	where tm_seeds.title_id = ?
-`)
-
+const TM_POOL_LIST_TITLE_ACTIVE = SQL("select * from tm_pool_active_view where title_id = ?")
 const TM_POOL_LIST_SEED_ACTIVE = SQL("select * from tm_pool_active_view where seed_id = ?")
 const TM_POOL_LIST_SEED_FINISHED = SQL("select * from tm_pool_finished_view where seed_id = ?")
 
