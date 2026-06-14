@@ -599,7 +599,7 @@ create view time_control_view as
 	where
 		status = 1
 		and is_active
-		and (julianday() - julianday(players.active_time)) > 21
+		and (julianday() - julianday(players.active_time)) > iif(is_match, 14, 21)
 	;
 
 drop view if exists time_control_deadline_view;
