@@ -166,11 +166,11 @@ mixin userstats(who, move_time, timeouts, ratings, tm_banned)
 
 		if timeouts.timeout_total || tm_banned
 			h3 Timeouts
-		if timeouts.timeout_total
-			div Total number of timeouts: #{timeouts.timeout_total}
-			div Games completed since last timeout: #{timeouts.games_since_timeout}
-		if tm_banned
-			div Banned from playing in tournaments since #{human_date(tm_banned.time)}.
+			if timeouts.timeout_total
+				div Total number of timeouts: #{timeouts.timeout_total}
+				div Games completed since last timeout: #{timeouts.games_since_timeout}
+			if tm_banned
+				div Banned from playing in tournaments since #{human_date(tm_banned.time)}.
 
 		if ratings.length > 0
 			h3 Most played games

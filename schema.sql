@@ -993,7 +993,8 @@ begin
 		invite_count = ( select count(1) from players where players.game_id = new.game_id and players.is_invite ),
 		mtime = datetime()
 	where
-		games.game_id = old.game_id;
+		games.game_id = old.game_id
+	;
 end;
 
 -- Triggers to track is_active and time spent!

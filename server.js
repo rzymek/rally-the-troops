@@ -1012,7 +1012,6 @@ const SQL_SELECT_CONTACT_WHITELIST = SQL("select you from contacts where me=? an
 const SQL_SELECT_CONTACT_FRIEND_NAMES = SQL("select name from contact_view where me=? and relation>0").pluck()
 const SQL_SELECT_CONTACT_LIST = SQL("select * from contact_view where me=?")
 const SQL_INSERT_CONTACT = SQL("insert into contacts (me,you,relation) values (?,?,?)")
-const SQL_INSERT_CONTACT_NOTE = SQL("insert into contacts (me,you,relation,note) values (?,?,?,?)")
 const SQL_DELETE_CONTACT = SQL("delete from contacts where me=? and you=?")
 const SQL_SELECT_RELATION = SQL("select relation from contacts where me=? and you=?").pluck()
 const SQL_SELECT_CONTACT = SQL("select relation, note from contacts where me=? and you=?")
