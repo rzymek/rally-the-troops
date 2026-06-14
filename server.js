@@ -230,10 +230,10 @@ app.locals.PACE_ICON = [
 ]
 
 app.locals.PACE_TEXT = [
-	"No time control",
-	"7+ moves per day",
-	"3+ moves per day",
-	"1+ moves per day",
+	"Any pace",
+	"Blitz",
+	"Fast",
+	"Slow",
 ]
 
 app.locals.human_date = human_date

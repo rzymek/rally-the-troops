@@ -3,10 +3,10 @@
 /* global game, roles, players, blacklist, user_id */
 
 const PACE_TEXT = [
-	"No time control",
-	 "7+ moves per day",
-	 "3+ moves per day",
-	 "1+ moves per day",
+	"Any pace",
+	"Blitz",
+	"Fast",
+	"Slow",
 ]
 
 let start_status = 0
