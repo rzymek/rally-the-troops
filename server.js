@@ -1600,7 +1600,7 @@ const SQL_FINISH_GAME = SQL(`
 `)
 
 const SQL_REWIND_GAME_TIMEOUT = SQL("delete from user_timeout where game_id=?")
-const SQL_REWIND_GAME_CLOCK = SQL("update players set clock=max(1,clock), active_time=julianday() where game_id=?")
+const SQL_REWIND_GAME_CLOCK = SQL("update players set active_time=julianday() where game_id=?")
 const SQL_REWIND_GAME = SQL("update games set status=1,did_timeout=0,did_resign=0,result=null,moves=?,active=?,mtime=datetime() where game_id=?")
 const SQL_SELECT_REWIND = SQL("select snap_id, state->>'$.active' as active, coalesce(state->>'$.state', state->>'$.L.P', '-') as state from game_snap where game_id=? order by snap_id desc")
 
@@ -1831,7 +1831,6 @@ function annotate_game_info(game, user_id, unread, unseen) {
 
 	let your_count = 0
 	let your_role = null
-	let time_left = Infinity
 
 	let roles = get_game_roles(game.title_id, game.scenario, game.options)
 
@@ -1850,9 +1849,6 @@ function annotate_game_info(game, user_id, unread, unseen) {
 			if (p.is_invite)
 				game.your_turn = true
 		}
-
-		if (p.is_active)
-			time_left = Math.min(time_left, p.time_left)
 
 		let link
 		if (!p.name)
@@ -1881,9 +1877,6 @@ function annotate_game_info(game, user_id, unread, unseen) {
 			return role
 		}).join(", ")
 	}
-
-	if (game.is_ready && game.status === 1)
-		game.time_left = time_left
 
 	if (game.is_match)
 		game.seed = TM_SELECT_SEED_BY_GAME.get(game.game_id)

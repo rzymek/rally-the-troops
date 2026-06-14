@@ -533,7 +533,6 @@ create table if not exists players (
 	is_active boolean,
 	active_time real, -- julianday
 	time_used real default 0,
-	clock real,
 	score integer,
 	primary key (game_id, role)
 ) without rowid;
@@ -578,14 +577,6 @@ create view player_view as
 		role,
 		is_invite,
 		is_active,
-		(
-			case when is_active
-			then
-				clock - (julianday() - julianday(active_time))
-			else
-				clock
-			end
-		) as time_left,
 		atime
 	from
 		games
@@ -608,7 +599,7 @@ create view time_control_view as
 	where
 		status = 1
 		and is_active
-		and clock - (julianday() - julianday(players.active_time)) < 0
+		and (julianday() - julianday(players.active_time)) > 21
 	;
 
 drop view if exists time_control_deadline_view;
@@ -1007,26 +998,6 @@ end;
 
 -- Triggers to track is_active and time spent!
 
-drop trigger if exists trigger_game_started;
-create trigger trigger_game_started after update of status on games
-	when old.status = 0 and new.status = 1
-begin
-	update
-		players
-	set
-		clock = (
-			case old.pace
-				when 1 then 1
-				when 2 then 3
-				when 3 then 5
-				else 21
-			end
-		)
-	where
-		players.game_id = old.game_id
-	;
-end;
-
 drop trigger if exists trigger_active_changed;
 create trigger trigger_active_changed after update of active on games
 begin
@@ -1060,15 +1031,7 @@ begin
 		players
 	set
 		active_time = null,
-		time_used = time_used + (julianday() - julianday(old.active_time)),
-		clock = (
-			case (select pace from games where games.game_id = players.game_id)
-				when 1 then min(clock - (julianday() - julianday(old.active_time)) + 4 / 24.0, 3)
-				when 2 then min(clock - (julianday() - julianday(old.active_time)) + 12 / 24.0, 5)
-				when 3 then min(clock - (julianday() - julianday(old.active_time)) + 36 / 24.0, 10)
-				else 21
-			end
-		)
+		time_used = time_used + (julianday() - julianday(old.active_time))
 	where
 		players.game_id = old.game_id and players.role = old.role
 	;

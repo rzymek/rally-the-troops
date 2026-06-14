@@ -2,13 +2,6 @@
 
 /* global game, roles, players, blacklist, user_id */
 
-const PACE_THRESHOLD = [
-	14,
-	3,
-	5,
-	10
-]
-
 const PACE_TEXT = [
 	"No time control",
 	 "7+ moves per day",
@@ -125,16 +118,6 @@ function format_options(options) {
 			return option_to_english(k) + "=" + option_to_english(v)
 		})
 		.join(", ")
-}
-
-function format_time_left(time) {
-	if (time <= 0)
-		return "no time left"
-	if (time <= 0.125)
-		return Math.floor(time * 24 * 60) + " minutes left"
-	if (time <= 3)
-		return Math.floor(time * 24) + " hours left"
-	return Math.floor(time) + " days left"
 }
 
 function epoch_from_julianday(x) {
@@ -385,9 +368,6 @@ function create_player_box(role, player) {
 			box.classList = "active"
 		if (player.is_invite)
 			box.classList = "invite"
-
-		if (game.status === 1 && (player.time_left < PACE_THRESHOLD[game.pace]))
-			td_role_time.textContent = format_time_left(player.time_left)
 
 		td_player_name.innerHTML = player_link(player)
 		if (player.user_id !== user_id && game.status <= 1)

@@ -14,6 +14,16 @@ If you need to resume a live game another day, schedule a time when you can cont
 
 Open a separate browser tab or window for each side when playing solo.
 
+## Etiquette
+
+For everyone's enjoyment, please respect the pace requests!
+If someone wants a fast game, don't join if you can only play one move per day.
+
+Timing out in a tournament is very bad!
+If you do this, you will not be allowed to join more tournaments.
+
+Please be considerate and don't ruin the experience for everyone else!
+
 ## Shortcuts
 
 There are several ways to scroll without the scroll bars:

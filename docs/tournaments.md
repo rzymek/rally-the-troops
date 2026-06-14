@@ -6,8 +6,6 @@ To play in one of these tournaments, simply register and wait.
 Once enough players have joined, the tournaments will kick off automatically.
 Make sure you've turned on notifications so you don't miss the start!
 
-## Time Control
-
 If you let a tournament game time out, you will not be allowed to join future tournaments!
 
 ## Format
@@ -48,6 +46,12 @@ thinking time.
 > round 1 starts immediately and games in round 1 will terminate (if not finished earlier) by day 30;
 > round 2 starts on day 7 and will terminate on day 37;
 > round 3 starts on day 14 and terminates on day 44.
+
+### Timeouts
+
+If you don't make a move in a game for two weeks, the game will time out with a loss
+for you, and all your future games in the same tournament. You'll also be banned from
+participating in future tournaments and all your gained tournament tickets will be forfeit.
 
 ### Points
 
