@@ -3419,7 +3419,7 @@ app.all("/tm/register/:seed_id/:level", must_be_logged_in, function (req, res) {
 	let seed = TM_SELECT_SEED.get(seed_id)
 	if (!seed)
 		return res.status(404).send("Tournament seed not found.")
-	if (level > seed.level_count)
+	if (level < 1 || level > seed.level_count)
 		return res.status(401).send("Tournament does not have that many levels.")
 	let user_id = req.user.user_id
 	let limit = check_join_seed_limit(req.user, seed)
