@@ -206,6 +206,8 @@ app.locals.SITE_URL = SITE_URL
 app.locals.SITE_THEME = process.env.SITE_THEME
 app.locals.SITE_ICON = process.env.SITE_ICON
 app.locals.SITE_IMPRINT = process.env.SITE_IMPRINT
+app.locals.ENABLE_MAIL = !!mailer
+app.locals.ENABLE_WEBHOOKS = !!WEBHOOKS
 app.locals.ENABLE_FORUM = process.env.FORUM | 0
 app.locals.ENABLE_TOURNAMENTS = process.env.TOURNAMENTS | 0
 app.locals.ENABLE_ARCHIVE = ENABLE_ARCHIVE
@@ -637,9 +639,9 @@ function render_markdown(res, path, default_text, footer) {
 
 app.get("/", function (req, res) {
 	var footer = []
-	if (!mailer)
+	if (!app.locals.ENABLE_MAIL)
 		footer.push("Mail notifications disabled.")
-	if (!WEBHOOKS)
+	if (!app.locals.ENABLE_WEBHOOKS)
 		footer.push("Webhook notifications disabled.")
 	render_markdown(res, "public/index.md", "# Index\nInsert contents of `public/index.md` here.\n", footer)
 })
