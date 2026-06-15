@@ -13,6 +13,7 @@ html
 		include head
 		if user.waiting_games + user.waiting_chats > 0
 			title= "(" + (user.waiting_games + user.waiting_chats) + ") Play"
+			link(rel="icon" type="image/svg+xml" href="/favicon_move.svg")
 		else
 			title Play
 		if active_games.length > 0
