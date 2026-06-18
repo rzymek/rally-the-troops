@@ -860,6 +860,7 @@ drop trigger if exists tm_trigger_update_results;
 create trigger tm_trigger_update_results after update of result on games when new.is_match
 begin
 	-- each player scores
+	-- only update if score is null to allow custom scoring rules
 	update players
 		set score = (
 			case
@@ -872,6 +873,9 @@ begin
 		)
 	where
 		players.game_id = new.game_id
+		and (
+			players.score is null or new.result is null
+		)
 	;
 
 	-- Neustadtl Sonneborn–Berger tie-breaker

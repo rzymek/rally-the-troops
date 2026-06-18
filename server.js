@@ -1696,6 +1696,9 @@ const SQL_SELECT_PLAYER_NAME = SQL("SELECT name FROM players JOIN users using(us
 const SQL_INSERT_PLAYER_ROLE = SQL("INSERT OR IGNORE INTO players (game_id,role,user_id,is_invite) VALUES (?,?,?,?)")
 const SQL_DELETE_PLAYER_ROLE = SQL("DELETE FROM players WHERE game_id=? AND role=?")
 
+const SQL_SELECT_ROLES = SQL("select role from players where game_id=?").pluck()
+const SQL_UPDATE_SCORE = SQL("update players set score=? where game_id=? and role=?")
+
 const SQL_SELECT_PLAYER_VIEW = SQL("select * from player_view where game_id = ?")
 
 // owned and unstarted games count towards the limit
@@ -3043,6 +3046,7 @@ const SQL_INSERT_TIMEOUT = SQL("insert or ignore into user_timeout (user_id, gam
 
 function terminate_game(game, role, user_id) {
 	var result = get_resign_result(game, role)
+	update_game_scores(game.title_id, game.game_id, null, result, true)
 	SQL_FINISH_GAME.run(0, result, 0, 1, game.game_id)
 	SQL_INSERT_TIMEOUT.run(user_id, game.game_id)
 }
@@ -4269,6 +4273,27 @@ function put_snap(game_id, replay_id, state) {
 			send_message(other, "snapsize", snap_id)
 }
 
+function update_game_scores(title_id, game_id, state, result, did_timeout) {
+	var roles = SQL_SELECT_ROLES.all(game_id)
+	var role, points
+	if (state && RULES[title_id].tournament_points) {
+		points = RULES[title_id].tournament_points(state)
+		for (role of roles)
+			SQL_UPDATE_SCORE.run(points[role], game_id, role)
+	} else {
+		for (role of roles) {
+			var s = 0
+			if (result == role)
+				s = 2
+			else if (result == "Draw" || result.includes(role))
+				s = 1
+			else if (result == "None" || result == null || did_timeout)
+				s = null
+			SQL_UPDATE_SCORE.run(s, game_id, role)
+		}
+	}
+}
+
 function put_new_state(title_id, game_id, state, old_active, role, action, args, is_move, is_rollback) {
 	SQL_BEGIN.run()
 	try {
@@ -4287,6 +4312,7 @@ function put_new_state(title_id, game_id, state, old_active, role, action, args,
 		SQL_INSERT_GAME_STATE.run(game_id, JSON.stringify(state))
 
 		if (is_nobody_active(state.active)) {
+			update_game_scores(title_id, game_id, state, state.result, action === ".timeout")
 			SQL_FINISH_GAME.run(
 				is_move,
 				state.result,
