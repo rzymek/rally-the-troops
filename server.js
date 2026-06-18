@@ -2412,6 +2412,7 @@ app.get("/api/replay/:game_id", must_be_logged_in, function (req, res) {
 		return res.status(404).send("Invalid game ID.")
 	if (!may_debug_game(req.user, game))
 		return res.status(401).send("Not authorized to debug.")
+	res.setHeader("Content-Disposition", `attachment; filename="replay-${game_id}.json"`)
 	if (ENABLE_ARCHIVE) {
 		if (game.status === STATUS_ARCHIVED)
 			return res.type("application/json").send(ARCHIVE_SELECT_EXPORT.get(game_id))
@@ -2426,6 +2427,7 @@ app.get("/api/export/:game_id", must_be_logged_in, function (req, res) {
 		return res.status(404).send("Invalid game ID.")
 	if (!may_debug_game(req.user, game))
 		return res.status(401).send("Not authorized to debug.")
+	res.setHeader("Content-Disposition", `attachment; filename="export-${game_id}.json"`)
 	if (ENABLE_ARCHIVE) {
 		if (game.status === STATUS_ARCHIVED)
 			return res.type("application/json").send(ARCHIVE_SELECT_EXPORT.get(game_id))
