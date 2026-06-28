@@ -4172,8 +4172,13 @@ function on_action(socket, action, args, cookie) {
 		state = RULES[socket.title_id].action(state, role, action, args)
 
 		if (state.$pie) {
-			if (state.$pie.swap)
+			if (state.$pie.swap) {
+				// NOTE: Force update of is_active on players table,
+				// and trigger your turn notifications with the new
+				// role assignments.
+				old_active = ""
 				swap_player_roles(socket)
+			}
 			if (state.$pie.scenario)
 				SQL_UPDATE_GAME_SCENARIO.run(state.$pie.scenario, socket.game_id)
 			delete state.$pie
