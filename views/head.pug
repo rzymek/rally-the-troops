@@ -119,6 +119,8 @@ mixin gamelist(list,hide_title=0)
 								when 1
 									div Moves: #{item.moves}
 									div Last move: #{human_date(item.mtime)}
+									if item.xtime
+										div Deadline: #{human_date(item.xtime)}
 								when 2
 									div Moves: #{item.moves}
 									div Finished: #{human_date(item.mtime)}
