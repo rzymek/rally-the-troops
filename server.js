@@ -1636,7 +1636,7 @@ const SQL_INSERT_REPLAY = SQL("insert into game_replay (game_id,replay_id,role,a
 const SQL_INSERT_SNAP = SQL("insert into game_snap (game_id,snap_id,replay_id,state,log_length) values (?, (select coalesce(max(snap_id), 0) + 1 from game_snap where game_id=?), ?, ?, ?) returning snap_id").pluck()
 const SQL_SELECT_SNAP = SQL("select * from game_snap where game_id = ? and snap_id = ?")
 const SQL_SELECT_SNAP_STATE = SQL("select state from game_snap where game_id = ? and snap_id = ?").pluck()
-const SQL_SELECT_SNAP_COUNT = SQL("select max(snap_id) from game_snap where game_id=?").pluck()
+const SQL_SELECT_SNAP_COUNT = SQL("select max(snap_id) as snap_id, max(log_length) as log_length from game_snap where game_id=?")
 
 const SQL_DELETE_GAME_SNAP_ROLLBACK = SQL("delete from game_snap where game_id=? and log_length > ? returning snap_id").pluck()
 const SQL_DELETE_GAME_SNAP = SQL("delete from game_snap where game_id=? and snap_id > ?")
@@ -4484,7 +4484,7 @@ wss.on("connection", (socket, req) => {
 
 		let state = get_game_state(socket.game_id)
 
-		if (socket.seen === 0) {
+		if (!req.query.reconnect) {
 			let roles = get_game_roles(game.title_id, game.scenario, game.options)
 			send_message(socket, "players", [
 				socket.role,
@@ -4551,9 +4551,11 @@ wss.on("connection", (socket, req) => {
 
 		broadcast_presence(socket.game_id)
 
-		let snapsize = SQL_SELECT_SNAP_COUNT.get(socket.game_id)
-		if (snapsize > 0)
-			send_message(socket, "snapsize", snapsize)
+		let last_snap = SQL_SELECT_SNAP_COUNT.get(socket.game_id)
+		if (last_snap) {
+			send_message(socket, "snapsize", last_snap.snap_id)
+			socket.seen = Math.min(socket.seen, last_snap.log_length)
+		}
 
 		send_state(socket, get_game_state(socket.game_id))
 	} catch (error) {

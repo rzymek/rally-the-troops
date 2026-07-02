@@ -536,7 +536,7 @@ function reconnect_play() {
 		console.log("RECONNECT")
 		// remove reconnect button
 		document.getElementById("actions").replaceChildren()
-		connect_play()
+		connect_play(true)
 	}
 }
 
@@ -553,6 +553,64 @@ document.addEventListener("touchstart", reset_idle_timer, true)
 // TODO: auto-reconnect when windows gains focus again?
 // window.addEventListener("focus", reconnect_play)
 
+/* GAME LOG CACHE */
+
+let stored_game_log_length = 0
+
+function load_game_log() {
+	// ignore cached logs if page was reloaded
+	if (performance.getEntriesByType("navigation")[0].type === "reload")
+		return
+	try {
+		var key = "#" + params.game_id + "/" + params.role
+		var data = window.localStorage.getItem(key)
+		if (data) {
+			game_log = JSON.parse(data)
+			console.log("LOAD LOCAL LOG", data.length, "bytes", game_log.length, "lines")
+			stored_game_log_length = game_log.length
+		}
+		touch_game_log(key)
+	} catch (err) {
+		console.error(err)
+		game_log = []
+	}
+}
+
+function save_game_log() {
+	try {
+		var key = "#" + params.game_id + "/" + params.role
+		stored_game_log_length = 0
+		var data = JSON.stringify(game_log)
+		console.log("SAVE LOCAL LOG", data.length, "bytes", game_log.length, "lines")
+		window.localStorage.setItem(key, data)
+		stored_game_log_length = game_log.length
+	} catch (err) {
+		console.error(err)
+		if (err.name === "QuotaExceededError" && window.localStorage.length > 0)
+			purge_game_logs()
+	}
+}
+
+function touch_game_log(key) {
+	var lru = window.localStorage.getItem("!LRU")
+	lru = lru ? JSON.parse(lru) : []
+	lru = lru.filter(x => x !== key)
+	if (lru.length > 20)
+		lru.length = 20
+	lru.unshift(key)
+	purge_game_logs(lru)
+	window.localStorage.setItem("!LRU", JSON.stringify(lru))
+}
+
+function purge_game_logs(keep=[]) {
+	for (var key of Object.keys(window.localStorage)) {
+		if (key[0] == "#" && !keep.includes(key)) {
+			console.log("PURGE LOCAL LOG", key)
+			window.localStorage.removeItem(key)
+		}
+	}
+}
+
 /* CONNECT TO GAME SERVER */
 
 function send_message(cmd, arg) {
@@ -561,10 +619,16 @@ function send_message(cmd, arg) {
 	socket.send(data)
 }
 
-function connect_play() {
+function connect_play(is_reconnect) {
 	let protocol = (window.location.protocol === "http:") ? "ws" : "wss"
-	let seen = document.getElementById("log").children.length
+
+	load_game_log()
+
+	let seen = game_log.length
 	let url = `${protocol}://${window.location.host}/play-socket?title=${params.title_id}&game=${params.game_id}&role=${encodeURIComponent(params.role)}&seen=${seen}`
+
+	if (is_reconnect)
+		url += "&reconnect=1"
 
 	if (socket && socket.readyState < 3) {
 		console.log("ALREADY CONNECTED")
@@ -697,6 +761,10 @@ function connect_play() {
 			for (let line of view.log)
 				game_log.push(line)
 
+			// save log first time we connect
+			if (!stored_game_log_length)
+				save_game_log()
+
 			// keep showing current snapshot
 			if (snap_view) {
 				snap_view = null
@@ -717,6 +785,8 @@ function connect_play() {
 				replay_panel.remove()
 			else
 				document.body.appendChild(replay_panel)
+			if (game_log.length !== stored_game_log_length)
+				save_game_log()
 			break
 
 		case "nosnap":
@@ -1743,7 +1813,7 @@ window.addEventListener("load", function () {
 	else if (params.mode === "replay")
 		init_replay()
 	else if (params.mode === "play")
-		connect_play()
+		connect_play(false)
 	else
 		document.getElementById("prompt").textContent = "Invalid mode: " + params.mode
 })
