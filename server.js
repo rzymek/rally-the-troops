@@ -876,9 +876,29 @@ const SQL_SELECT_ADMIN_TIMEOUTS = SQL(`
 	order by time desc
 `)
 
+const TM_SELECT_ADMIN_TIMEOUTS = SQL(`
+	select
+		game_id, notice, moves,
+		mtime,
+		xtime,
+		group_concat(players.time_used) as time_used,
+		group_concat(user_timeout.time) as hard_timeout
+	from games
+	left join players using(game_id)
+	left join user_timeout using(game_id, user_id)
+	where status>1 and did_timeout and is_match and xtime > datetime('now', '-28 days')
+	group by game_id
+	order by mtime desc
+`)
+
 app.get("/admin/timeouts", must_be_moderator, function (req, res) {
 	let timeouts = SQL_SELECT_ADMIN_TIMEOUTS.all()
 	return res.render("admin_timeouts.pug", { timeouts })
+})
+
+app.get("/tm/timeouts", must_be_moderator, function (req, res) {
+	let timeouts = TM_SELECT_ADMIN_TIMEOUTS.all()
+	return res.render("tm_timeouts.pug", { timeouts })
 })
 
 /*
