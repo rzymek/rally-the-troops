@@ -3253,6 +3253,7 @@ const TM_SELECT_GAMES = SQL(`
 		tm_rounds.*,
 		games.status,
 		games.moves,
+		games.did_timeout,
 		json_group_object(role, coalesce(name, 'null')) as role_names,
 		json_group_object(role, score) as role_scores
 	from

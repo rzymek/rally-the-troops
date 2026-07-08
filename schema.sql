@@ -866,11 +866,9 @@ begin
 		set score = (
 			case
 				when new.result is null then null
-				when new.result = 'None' then null
 				when new.result = role then 2
 				when new.result = 'Draw' then 1
 				when instr(new.result, role) then 1
-				when new.did_timeout then null
 				else 0
 			end
 		)
@@ -912,7 +910,6 @@ begin
 				) as son
 			from
 				tm_rounds as rr
-				join games using(game_id)
 				join players as p1 using(game_id)
 				join players as p2 using(game_id)
 				join pts_cte pp on rr.pool_id = pp.pool_id and p2.user_id = pp.user_id
