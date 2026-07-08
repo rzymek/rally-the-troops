@@ -3508,8 +3508,10 @@ function make_pools(seed, players) {
 		if (v % 6 === 0) return designs.pool_players(players, 6)
 		if (v % 12 === 0) return designs.pool_players(players, 12)
 		// misc bibd
-		if (v % 13 === 0 && n === 6)
-			return designs.pool_players(players, 13)
+		if (v % 13 === 0 && n === 6) return designs.pool_players(players, 13)
+		// small youden squares
+		if (v % 4 === 0) return designs.pool_players(players, 4)
+		if (v % 3 === 0) return designs.pool_players(players, 3)
 	}
 
 	if (k === 4) {
@@ -3524,8 +3526,10 @@ function make_pools(seed, players) {
 		// social golfer semi-solutions
 		if (v % 8 === 0) return designs.pool_players(players, 8)
 		// misc bibd
-		if (v % 9 === 0 && n === 8)
-			return designs.pool_players(players, 9)
+		if (v % 9 === 0 && n === 8) return designs.pool_players(players, 9)
+		// small youden squares
+		if (v % 5 === 0) return designs.pool_players(players, 5)
+		if (v % 4 === 0) return designs.pool_players(players, 4)
 	}
 
 	if (k === 5) {
@@ -3534,6 +3538,9 @@ function make_pools(seed, players) {
 		if (v % 21 === 0) return designs.pool_players(players, 21)
 		// resolvable bibd
 		if (v % 25 === 0) return designs.pool_players(players, 25)
+		// small youden squares
+		if (v % 6 === 0) return designs.pool_players(players, 6)
+		if (v % 5 === 0) return designs.pool_players(players, 5)
 	}
 
 	if (k === 6) {
@@ -3541,6 +3548,17 @@ function make_pools(seed, players) {
 		if (v % 11 === 0) return designs.pool_players(players, 11)
 		if (v % 16 === 0) return designs.pool_players(players, 16)
 		if (v % 31 === 0) return designs.pool_players(players, 31)
+		// small youden squares
+		if (v % 7 === 0) return designs.pool_players(players, 7)
+		if (v % 6 === 0) return designs.pool_players(players, 6)
+	}
+
+	if (k === 7) {
+		// youden squares
+		if (v % 15 === 0) return designs.pool_players(players, 15)
+		// small youden squares
+		if (v % 8 === 0) return designs.pool_players(players, 8)
+		if (v % 7 === 0) return designs.pool_players(players, 7)
 	}
 
 	throw new Error("cannot create pools for this player count")
