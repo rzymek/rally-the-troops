@@ -605,25 +605,36 @@ create view time_control_view as
 drop view if exists time_control_deadline_view;
 create view time_control_deadline_view as
 	with
+		pp as (
+			select
+				game_id, role, user_id, (
+					case when is_active then
+						time_used + julianday() - active_time
+					else
+						time_used
+					end
+				) as time_used
+			from
+				players
+		),
 		mm as (
-			select game_id, max(time_used) as time_used from players group by game_id
+			select game_id, max(time_used) as time_used from pp group by game_id
 		)
 	select
 		games.game_id,
-		group_concat(players.role) as role,
+		group_concat(pp.role) as role,
 		games.is_opposed,
 		games.is_match
 	from
 		games
 		join mm on mm.game_id = games.game_id
-		join players on players.game_id = games.game_id and players.time_used = mm.time_used
+		join pp on pp.game_id = games.game_id and pp.time_used = mm.time_used
 	where
 		status = 1
 		and datetime() > xtime
 	group by
 		games.game_id
 	;
-
 
 -- Export game state as JSON
 
@@ -1005,7 +1016,7 @@ begin
 	update
 		players
 	set
-		is_active = ( new.active = 'Both' or instr(new.active, players.role) )
+		is_active = coalesce(new.active = 'Both' or instr(new.active, players.role), 0)
 	where
 		players.game_id = old.game_id
 	;
