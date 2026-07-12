@@ -28,6 +28,10 @@ html
 				h2 Open
 				+gamelist(open_games)
 
+			if move_games.length > 0
+				h2 Move
+				+gamelist(move_games)
+
 			if (queues && queues.length > 0) || (active_pools && active_pools.length > 0) || (finished_pools && finished_pools.length > 0)
 				h2 Tournaments
 
@@ -55,10 +59,6 @@ html
 
 				+poollist(active_pools, "Active", TM_ICON_ACTIVE)
 				+poollist(finished_pools, "Finished", TM_ICON_FINISHED)
-
-			if move_games.length > 0
-				h2 Move
-				+gamelist(move_games)
 
 			if active_games.length > 0
 				h2 Active
