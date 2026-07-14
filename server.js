@@ -2334,8 +2334,21 @@ app.post("/api/accept/:game_id/:role", must_be_logged_in, function (req, res) {
 app.post("/api/part/:game_id/:role", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let role = req.params.role
-	let user_name = SQL_SELECT_PLAYER_NAME.get(game_id, role)
+
 	let game = SQL_SELECT_GAME.get(game_id)
+	if (game.is_match)
+		return res.send("Cannot kick players from tournament games.")
+	if (game.status > 1)
+		return res.send("Cannot kick players from finished games.")
+	if (game.status > 0 && !game.is_private)
+		return res.send("Cannot kick players from public games.")
+
+	let user_name = SQL_SELECT_PLAYER_NAME.get(game_id, role)
+	if (!user_name)
+		res.send("Cannot find role assignment.")
+	if (user_name !== req.user.name && game.owner_id !== req.user.user_id)
+		res.send("Only the owner may kick other players.")
+
 	SQL_DELETE_PLAYER_ROLE.run(game_id, role)
 	res.send("SUCCESS")
 
