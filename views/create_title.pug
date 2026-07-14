@@ -13,10 +13,10 @@ html
 			div.logo
 				+gamecover(title.title_id)
 
-			if limit
-				p.error= limit
-			if !user
-				p.error You are not logged in!
+			if create_limit
+				p.error= create_limit
+			else if join_limit
+				p.error= join_limit
 
 			form(method="post" action="/create/"+title.title_id)
 				if Array.isArray(rules.scenarios)
@@ -64,11 +64,17 @@ html
 
 					p
 						label
-							input(type="checkbox" name="is_private" value="true")
+							if join_limit
+								input(type="hidden" name="is_private" value="true")
+								input(type="checkbox" checked disabled)
+							else
+								input(type="checkbox" name="is_private" value="true")
 							| Private
 
-					if !limit
-						p
+					p
+						if create_limit
+							button(type="submit" disabled) Create
+						else
 							button(type="submit") Create
 
 				else

@@ -1698,24 +1698,26 @@ const SQL_DELETE_PLAYER_ROLE = SQL("DELETE FROM players WHERE game_id=? AND role
 
 const SQL_SELECT_PLAYER_VIEW = SQL("select * from player_view where game_id = ?")
 
+// owned and unstarted games count towards the limit
 const SQL_COUNT_OPEN_GAMES = SQL(`
 	select count(*) from games where owner_id=? and status=0
 `).pluck()
 
+// active public games count towards limit
 const SQL_COUNT_ACTIVE_GAMES = SQL(`
 	select count(*) from games
-	where status < 2 and exists (
+	where not is_private and status < 2 and exists (
 		select 1 from players where players.user_id=? and players.game_id=games.game_id
 	)
 `).pluck()
 
+// finished opposed games increase your limit
 const SQL_COUNT_FINISHED_GAMES = SQL(`
 	select count(*) from games
-	where status > 1 and is_opposed and exists (
+	where is_opposed and status > 1 and exists (
 		select 1 from players where players.user_id=? and players.game_id=games.game_id
 	)
 `).pluck()
-
 
 const SQL_SELECT_REMATCH = SQL(`SELECT game_id FROM games WHERE status < ${STATUS_FINISHED} AND notice=?`).pluck()
 const SQL_INSERT_REMATCH = SQL(`
@@ -1839,26 +1841,36 @@ const QUERY_LIST_FINISHED_GAMES_OF_USER = SQL(`
 	order by status asc, mtime desc
 	`)
 
-function check_create_game_limit(user) {
+function get_user_join_limit(user) {
+	var finished = SQL_COUNT_FINISHED_GAMES.get(user.user_id)
+	return Math.max(LIMIT_ACTIVE_GAMES_MIN, Math.min(LIMIT_ACTIVE_GAMES_MAX, finished))
+}
+
+function get_user_join_count(user) {
+	var active = SQL_COUNT_ACTIVE_GAMES.get(user.user_id)
+	// only count queued tournament games as 1/2 of actual number
+	var queued = TM_COUNT_QUEUE_GAMES.get(user.user_id) >> 1
+	return active + queued
+}
+
+function check_create_game_limit(user, n) {
 	if (user.is_tournament)
 		return null
-	var limit = check_join_game_limit(user, 1)
-	if (limit)
-		return limit
-	if (SQL_COUNT_OPEN_GAMES.get(user.user_id) >= LIMIT_OPEN_GAMES)
-		return "You have too many open games!"
+	if (user.waiting_games >= LIMIT_WAITING_GAMES)
+		return "You must attend to the games waiting for you before you can create another!"
+	if (SQL_COUNT_OPEN_GAMES.get(user.user_id) + n > LIMIT_OPEN_GAMES)
+		return "You have too many open games to create another one!"
 	return null
 }
 
 function check_join_game_limit(user, n) {
 	if (user.waiting_games >= LIMIT_WAITING_GAMES)
-		return "There are games waiting for you to move!"
-	var finished = SQL_COUNT_FINISHED_GAMES.get(user.user_id)
-	var active = SQL_COUNT_ACTIVE_GAMES.get(user.user_id)
-	// only count queued tournament games as 1/2 of actual number
-	var queued = TM_COUNT_QUEUE_GAMES.get(user.user_id) / 2
-	if (active + queued + n > Math.max(LIMIT_ACTIVE_GAMES_MIN, Math.min(LIMIT_ACTIVE_GAMES_MAX, finished)))
-		return "You cannot join any more games!"
+		return "You must attend to the games waiting for you before you can join another!"
+	var count = get_user_join_count(user)
+	var limit = get_user_join_limit(user)
+	console.log("check_join_game_limit", user.name, count, n, limit)
+	if (count + n > limit)
+		return "You are at the limit of how many public games you may play!"
 	return null
 }
 
@@ -2069,7 +2081,8 @@ app.get("/create/:title_id", must_be_logged_in, function (req, res) {
 		return res.status(404).send("Invalid title.")
 	res.render("create_title.pug", {
 		title,
-		limit: req.user ? check_create_game_limit(req.user) : null,
+		join_limit: check_join_game_limit(req.user, 1),
+		create_limit: check_create_game_limit(req.user, 1),
 		rules: RULES[title_id],
 	})
 })
@@ -2110,7 +2123,7 @@ app.post("/create/:title_id", must_be_logged_in, function (req, res) {
 	let options = JSON.stringify(req.body, options_json_replacer)
 	let notice = req.body.notice
 
-	let limit = check_create_game_limit(req.user)
+	let limit = check_create_game_limit(req.user, priv ? 0 : 1)
 	if (limit)
 		return res.send(limit)
 
@@ -2230,6 +2243,8 @@ app.post("/rematch/:old_game_id", must_be_logged_in, function (req, res) {
 function user_may_join(user, game, players) {
 	if (game.is_match || game.status > 1)
 		return false
+	if (game.join_count == game.player_count)
+		return false
 	var has_already_joined = false
 	var has_other_players = false
 	for (let p of players) {
@@ -2330,6 +2345,11 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 	if (game.is_match)
 		icon += app.locals.ICON_MATCH
 
+	let may_join = user_may_join(req.user, game, players)
+	let limit = null
+	if (may_join && !game.is_private && game.owner_id !== req.user.user_id)
+		limit = check_join_game_limit(req.user, 1)
+
 	res.render("join.pug", {
 		icon,
 		game,
@@ -2338,8 +2358,8 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 		whitelist,
 		blacklist,
 		friends,
-		limit: req.user ? check_join_game_limit(req.user, 1) : null,
-		may_join: user_may_join(req.user, game, players),
+		limit,
+		may_join: !limit && may_join,
 		may_part: user_may_part(req.user, game, players),
 		may_kick: user_may_kick(req.user, game, players),
 		may_start: user_may_start(req.user, game, players),
@@ -2385,9 +2405,16 @@ function do_join(res, game_id, role, user_id, user_name, is_invite) {
 app.post("/api/join/:game_id/:role", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let role = req.params.role
-	let limit = check_join_game_limit(req.user, 1)
-	if (limit)
-		return res.send(limit)
+	let game = SQL_SELECT_GAME.get(game_id)
+	let players = SQL_SELECT_PLAYERS.all(game_id)
+	let may_join = user_may_join(req.user, game, players)
+	if (!may_join)
+		return res.send("You cannot join this game!")
+	if (!game.is_private && game.owner_id !== req.user.user_id) {
+		let limit = check_join_game_limit(req.user, req.user.user_id === game.owner_id ? 0 : 1)
+		if (limit)
+			return res.send(limit)
+	}
 	do_join(res, game_id, role, req.user.user_id, req.user.name, 0)
 })
 
