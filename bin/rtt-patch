@@ -20,6 +20,7 @@ let insert_snap = db.prepare("insert into game_snap(game_id,snap_id,replay_id,lo
 let select_state = db.prepare("select state from game_state where game_id=?").pluck()
 let update_state = db.prepare("update game_state set state=? where game_id=?")
 let update_active = db.prepare("update games set active=? where game_id=?")
+let update_scenario = db.prepare("update games set scenario=? where game_id=?")
 
 let update_result = db.prepare("update games set status=?, result=? where game_id=?")
 
@@ -248,6 +249,8 @@ function patch_game(game_id, {validate_actions=true, save_snaps=true, delete_und
 
 				if (state.$pie) {
 					console.log("\tPIE RULE INVOKED", JSON.stringify(state.$pie))
+					if (state.$pie.scenario && state.$pie.scenario !== game.scenario)
+						update_scenario.run(state.$pie.scenario, game_id)
 					delete state.$pie
 				}
 
