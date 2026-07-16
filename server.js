@@ -4074,6 +4074,7 @@ function swap_player_roles(socket) {
 function send_state(socket, state) {
 	try {
 		let view = RULES[socket.title_id].view(state, socket.role, false)
+		socket.actions = view.actions // remember actions for validation
 		if (socket.seen < view.log.length)
 			view.log_start = socket.seen
 		else
@@ -4198,6 +4199,19 @@ function put_new_state(title_id, game_id, state, old_active, role, action, args,
 	}
 }
 
+function is_valid_action(view_actions, action, args) {
+	if (!view_actions)
+		return false
+	var va = view_actions[action]
+	if (va) {
+		if (Array.isArray(va) && va.includes(args))
+			return true
+		if (args === undefined || args === null || args === 1 || Array.isArray(args))
+			return (va === 1 || va === true || typeof va === "string")
+	}
+	return false
+}
+
 function on_action(socket, action, args, cookie) {
 	if (args !== null)
 		SLOG(socket, "ACTION", action, JSON.stringify(args))
@@ -4207,6 +4221,12 @@ function on_action(socket, action, args, cookie) {
 	if (game_cookies[socket.game_id] !== cookie) {
 		send_state(socket, get_game_state(socket.game_id))
 		send_message(socket, "warning", "Synchronization error!")
+		return
+	}
+
+	if (!is_valid_action(socket.actions, action, args)) {
+		send_state(socket, get_game_state(socket.game_id))
+		send_message(socket, "warning", "Invalid action!")
 		return
 	}
 
