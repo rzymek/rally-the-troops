@@ -4062,7 +4062,7 @@ function send_state(socket, state) {
 		view.log = view.log.slice(view.log_start)
 		let this_view = JSON.stringify(view)
 		if (view.actions || socket.last_view !== this_view) {
-			socket.send('["state",' + this_view + "," + game_cookies[socket.game_id] + "]")
+			socket.send('["state",' + this_view + "," + game_cookies[socket.game_id][socket.role] + "]")
 			socket.last_view = this_view
 		}
 		if (is_nobody_active(state.active)) {
@@ -4200,7 +4200,7 @@ function on_action(socket, action, args, cookie) {
 	else
 		SLOG(socket, "ACTION", action)
 
-	if (game_cookies[socket.game_id] !== cookie) {
+	if (game_cookies[socket.game_id][socket.role] !== cookie) {
 		send_state(socket, get_game_state(socket.game_id))
 		send_message(socket, "warning", "Synchronization error!")
 		return
@@ -4218,10 +4218,7 @@ function on_action(socket, action, args, cookie) {
 		let old_active = String(state.active)
 		let role = socket.role
 
-		// Don't update cookie during simultaneous turns, as it results
-		// in many in-flight collisions.
-		if (!is_multi_active(old_active))
-			game_cookies[socket.game_id] ++
+		game_cookies[socket.game_id][socket.role] ++
 
 		state = RULES[socket.title_id].action(state, role, action, args)
 
@@ -4572,8 +4569,10 @@ wss.on("connection", (socket, req) => {
 			game_clients[socket.game_id].push(socket)
 		} else {
 			game_clients[socket.game_id] = [ socket ]
-			game_cookies[socket.game_id] = 1
+			game_cookies[socket.game_id] = {}
 		}
+
+		game_cookies[socket.game_id][socket.role] ??= 1
 
 		socket.on("close", (code) => {
 			SLOG(socket, "CLOSE " + code)
