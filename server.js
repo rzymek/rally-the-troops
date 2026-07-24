@@ -4305,7 +4305,7 @@ function finish_game_state(title_id, state, result, message) {
 		state = RULES[title_id].finish(state, result, message)
 	} else {
 		state.state = "game_over"
-		state.active = "None"
+		state.active = null
 		state.result = result
 		state.victory = message
 		state.log.push("")
