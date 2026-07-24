@@ -1328,6 +1328,7 @@ function toggle_log() {
 
 var toggle_zoom = function () {}
 var update_zoom = function () {}
+var update_map_size = function (w, h) {}
 
 /* PAN & ZOOM GAME BOARD */
 
@@ -1397,6 +1398,13 @@ var update_zoom = function () {}
 	var mom_time = 0
 	var mom_vx = 0
 	var mom_vy = 0
+
+	update_map_size = function (w, h) {
+		e_scroll.dataset.mapWidth = map_w = w
+		e_scroll.dataset.mapHeight = map_h = h
+		console.log("UPDATE MAP SIZE", map_w, map_h)
+		update_map_fit()
+	}
 
 	function clamp_scale(scale) {
 		let win_w = e_scroll.clientWidth
