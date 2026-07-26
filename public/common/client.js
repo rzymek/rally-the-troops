@@ -330,6 +330,8 @@ function update_chat_old() {
 }
 
 function show_chat() {
+	if (reconnect_play())
+		return
 	if (!chat.is_visible) {
 		document.getElementById("chat_button").classList.remove("new")
 		document.getElementById("chat_window").hidden = false
@@ -427,6 +429,8 @@ function save_notepad() {
 }
 
 function show_notepad() {
+	if (reconnect_play())
+		return
 	if (!notepad.is_visible) {
 		document.getElementById("notepad_window").hidden = false
 		document.getElementById("notepad_input").focus()
@@ -537,7 +541,9 @@ function reconnect_play() {
 		// remove reconnect button
 		document.getElementById("actions").replaceChildren()
 		connect_play(true)
+		return true
 	}
+	return false
 }
 
 document.addEventListener("mousemove", reset_idle_timer, true)
