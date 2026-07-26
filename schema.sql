@@ -512,7 +512,8 @@ create table if not exists game_snap (
 	game_id integer,
 	snap_id integer,
 	replay_id integer,
-	log_length integer, -- cached (state->>'$.log')
+	log_length integer, -- length(state->>'$.log')
+	log_hash integer, -- hash(state->>'$.log')
 	state text,
 	primary key (game_id, snap_id)
 );

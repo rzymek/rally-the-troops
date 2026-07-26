@@ -4,6 +4,17 @@
 const fs = require("fs")
 const sqlite3 = require("better-sqlite3")
 
+function fnv1a_log(log, m) {
+	var x = 2166136261
+	for (var k = 0; k < m; ++k) {
+		var data = "" + log[k]
+		for (var i = 0, n = data.length; i < n; ++i)
+			x = Math.imul(x ^ data.charCodeAt(i), 16777619)
+		x = Math.imul(x ^ 10, 16777619)
+	}
+	return x
+}
+
 var options = {}
 var input = []
 
@@ -69,9 +80,10 @@ for (let file of input) {
 	}
 
 	if (game.snaps) {
-		let insert_snap = db.prepare("insert into game_snap(game_id,snap_id,replay_id,state) values (?,?,?,?)")
+		let insert_snap = db.prepare("insert into game_snap(game_id,snap_id,replay_id,state,log_length,log_hash) values (?,?,?,?,?,?)")
 		game.snaps.forEach(([replay_id, state], i) => {
-			insert_snap.run(game_id, i+1, replay_id, JSON.stringify(state))
+			let log_hash = fnv1a_log(game.state.log, state.log)
+			insert_snap.run(game_id, i+1, replay_id, JSON.stringify(state), state.log, log_hash)
 		})
 	}
 

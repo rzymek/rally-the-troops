@@ -35,6 +35,17 @@ var replay_panel = null
 
 /* PUBLIC UTILITY FUNCTIONS */
 
+function fnv1a_log(log) {
+	var x = 2166136261
+	for (var k = 0, m = log.length; k < m; ++k) {
+		var data = "" + log[k]
+		for (var i = 0, n = data.length; i < n; ++i)
+			x = Math.imul(x ^ data.charCodeAt(i), 16777619)
+		x = Math.imul(x ^ 10, 16777619)
+	}
+	return x
+}
+
 function scroll_into_view(e) {
 	if (window.innerWidth <= 800)
 		document.querySelector("aside").hidden = true
@@ -631,7 +642,8 @@ function connect_play(is_reconnect) {
 	load_game_log()
 
 	let seen = game_log.length
-	let url = `${protocol}://${window.location.host}/play-socket?title=${params.title_id}&game=${params.game_id}&role=${encodeURIComponent(params.role)}&seen=${seen}`
+	let hash = fnv1a_log(game_log)
+	let url = `${protocol}://${window.location.host}/play-socket?title=${params.title_id}&game=${params.game_id}&role=${encodeURIComponent(params.role)}&seen=${seen}&hash=${hash}`
 
 	if (is_reconnect)
 		url += "&reconnect=1"

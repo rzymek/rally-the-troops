@@ -120,6 +120,17 @@ function object_group_by(items, callback) {
 	return groups
 }
 
+function fnv1a_log(log) {
+	var x = 2166136261
+	for (var k = 0, m = log.length; k < m; ++k) {
+		var data = "" + log[k]
+		for (var i = 0, n = data.length; i < n; ++i)
+			x = Math.imul(x ^ data.charCodeAt(i), 16777619)
+		x = Math.imul(x ^ 10, 16777619)
+	}
+	return x
+}
+
 /*
  * Notification mail setup.
  */
@@ -1638,10 +1649,11 @@ const SQL_DELETE_GAME_NOTE = SQL("DELETE FROM game_notes WHERE game_id=? AND rol
 
 const SQL_INSERT_REPLAY = SQL("insert into game_replay (game_id,replay_id,role,action,arguments) values (?, (select coalesce(max(replay_id), 0) + 1 from game_replay where game_id=?) ,?,?,?) returning replay_id").pluck()
 
-const SQL_INSERT_SNAP = SQL("insert into game_snap (game_id,snap_id,replay_id,state,log_length) values (?, (select coalesce(max(snap_id), 0) + 1 from game_snap where game_id=?), ?, ?, ?) returning snap_id").pluck()
+const SQL_INSERT_SNAP = SQL("insert into game_snap (game_id,snap_id,replay_id,state,log_length,log_hash) values (?, (select coalesce(max(snap_id), 0) + 1 from game_snap where game_id=?), ?, ?, ?, ?) returning snap_id").pluck()
 const SQL_SELECT_SNAP = SQL("select * from game_snap where game_id = ? and snap_id = ?")
 const SQL_SELECT_SNAP_STATE = SQL("select state from game_snap where game_id = ? and snap_id = ?").pluck()
-const SQL_SELECT_SNAP_COUNT = SQL("select max(snap_id) as snap_id, max(log_length) as log_length from game_snap where game_id=?")
+const SQL_SELECT_SNAP_COUNT = SQL("select max(snap_id) as snap_id from game_snap where game_id=?").pluck()
+const SQL_SELECT_SNAP_LOG_HASH = SQL("select exists ( select 1 from game_snap where game_id=? and snap_id=? and log_length=? and log_hash=? )").pluck()
 
 const SQL_DELETE_GAME_SNAP_ROLLBACK = SQL("delete from game_snap where game_id=? and log_length > ? returning snap_id").pluck()
 const SQL_DELETE_GAME_SNAP = SQL("delete from game_snap where game_id=? and snap_id > ?")
@@ -4127,7 +4139,7 @@ function delete_snaps_after_rollback(game_id, new_log_len) {
 }
 
 function put_snap(game_id, replay_id, state) {
-	let snap_id = SQL_INSERT_SNAP.get(game_id, game_id, replay_id, snap_from_state(state), state.log.length)
+	let snap_id = SQL_INSERT_SNAP.get(game_id, game_id, replay_id, snap_from_state(state), state.log.length, fnv1a_log(state.log))
 	if (game_clients[game_id])
 		for (let other of game_clients[game_id])
 			send_message(other, "snapsize", snap_id)
@@ -4517,6 +4529,7 @@ wss.on("connection", (socket, req) => {
 	socket.game_id = req.searchParams.get("game") | 0
 	socket.role = req.searchParams.get("role")
 	socket.seen = req.searchParams.get("seen") | 0
+	let log_hash = req.searchParams.get("hash") | 0
 	let is_reconnect = req.searchParams.get("reconnect") | 0
 
 	SLOG(socket, "OPEN " + socket.seen)
@@ -4604,10 +4617,13 @@ wss.on("connection", (socket, req) => {
 
 		broadcast_presence(socket.game_id)
 
-		let last_snap = SQL_SELECT_SNAP_COUNT.get(socket.game_id)
-		if (last_snap) {
-			send_message(socket, "snapsize", last_snap.snap_id)
-			socket.seen = Math.min(socket.seen, last_snap.log_length)
+		let last_snap_id = SQL_SELECT_SNAP_COUNT.get(socket.game_id)
+		if (last_snap_id) {
+			send_message(socket, "snapsize", last_snap_id)
+			if (socket.seen > 0 && !SQL_SELECT_SNAP_LOG_HASH.get(socket.game_id, last_snap_id, socket.seen, log_hash))
+				socket.seen = 0
+		} else {
+			socket.seen = 0
 		}
 
 		send_state(socket, get_game_state(socket.game_id))
