@@ -1704,7 +1704,7 @@ const SQL_INSERT_REMATCH = SQL(`
 	insert or ignore into games
 		(owner_id, title_id, scenario, options, player_count, pace, is_private, is_random, notice)
 	select
-		$owner_id, title_id, scenario, options, player_count, pace, is_private, $random, $magic
+		$owner_id, title_id, scenario, options, player_count, pace, 1, $random, $magic
 	from
 		games
 	where
