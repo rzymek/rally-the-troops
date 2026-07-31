@@ -4206,8 +4206,11 @@ function is_valid_action(view_actions, action, args) {
 	if (va) {
 		if (Array.isArray(va) && va.includes(args))
 			return true
-		if (args === undefined || args === null || args === 1 || Array.isArray(args))
+		if (args === undefined || args === null || args === 1)
 			return (va === 1 || va === true || typeof va === "string")
+		// special case for 300 (where it sends additional arguments to an action
+		if (Array.isArray(args) && Array.isArray(va) && va.includes(args[0]))
+			return true
 	}
 	return false
 }
