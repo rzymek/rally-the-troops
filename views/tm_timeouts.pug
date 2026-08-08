@@ -15,6 +15,7 @@ html
 					tr
 						th Game
 						th Notice
+						th Moves
 						th Time used
 						th Timeout
 						th.r Deadline
@@ -24,6 +25,7 @@ html
 							td
 								a(href="/join/"+item.game_id)= "#" + item.game_id
 							td= item.notice
+							td= item.moves
 							td= item.time_used.split(",").map(x=>Math.ceil(x*24)).join(", ")
 							td= item.hard_timeout
 							td.r= item.xtime
