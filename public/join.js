@@ -4,9 +4,9 @@
 
 const PACE_TEXT = [
 	"Any pace",
-	"Blitz",
-	"Fast",
-	"Slow",
+	"Blitz (7+ moves per day)",
+	"Fast (3+ moves per day)",
+	"Slow (1+ moves per day)",
 ]
 
 let start_status = 0

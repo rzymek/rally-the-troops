@@ -233,9 +233,9 @@ app.locals.PACE_ICON = [
 
 app.locals.PACE_TEXT = [
 	"Any pace",
-	"Blitz",
-	"Fast",
-	"Slow",
+	"Blitz (7+ moves per day)",
+	"Fast (3+ moves per day)",
+	"Slow (1+ moves per day)",
 ]
 
 app.locals.human_date = human_date
