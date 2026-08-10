@@ -443,7 +443,6 @@ create table if not exists games (
 
 	owner_id integer default 0,
 	notice text,
-	pace integer default 0,
 	is_private boolean default 0,
 	is_random boolean default 0,
 	is_match boolean default 0,
@@ -738,8 +737,6 @@ create table if not exists tm_seeds (
 	scenario text,
 	options text,
 	player_count integer,
-
-	pace integer default 0,
 
 	pool_size integer default 3,
 	match_count integer default 4,

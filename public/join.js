@@ -2,13 +2,6 @@
 
 /* global game, roles, players, blacklist, user_id */
 
-const PACE_TEXT = [
-	"Any pace",
-	"Blitz (7+ moves per day)",
-	"Fast (3+ moves per day)",
-	"Slow (1+ moves per day)",
-]
-
 let start_status = 0
 let evtsrc = null
 let invite_role = null
@@ -306,9 +299,6 @@ function create_game_list() {
 			create_game_list_item(list, "Scenario", game.scenario)
 		create_game_list_item(list, "Options", format_options(game.options))
 	}
-
-	if (game.pace > 0)
-		create_game_list_item(list, "Pace", PACE_TEXT[game.pace])
 
 	if (!game.pool_name)
 		create_game_list_item(list, "Notice", game.notice)

@@ -57,13 +57,6 @@ html
 						br
 						input(type="text" autocomplete="off" name="notice" size=45 placeholder="What are you looking for?")
 
-					p Pace:
-						each text, pace in PACE_TEXT
-							br
-							label
-								input(type="radio" name="pace" value=pace checked=pace===0)
-								| !{PACE_ICON[pace]} #{text}
-
 					p
 						label
 							input(type="checkbox" name="is_random" value="true")

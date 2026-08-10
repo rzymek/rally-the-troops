@@ -26,8 +26,7 @@ mixin gamelist(list,hide_title=0)
 			div
 				-
 					let className = "game_item"
-					let pace_icon = ""
-					let pace_text = ""
+					let game_icon = ""
 					let chat_icon = ""
 					if (item.your_turn || item.is_unseen) className += " your_turn"
 					if (item.status === 0 && item.join_count === 0) className += " open replacement"
@@ -38,20 +37,17 @@ mixin gamelist(list,hide_title=0)
 					else if (item.status === 2) className += " finished"
 					else if (item.status === 3) className += " archived"
 					if (item.is_unread) { chat_icon = ICON_UNREAD; className += " unread" }
-					if (item.is_private) pace_icon += ICON_PRIVATE
-					if (item.is_match)
-						pace_icon += ICON_MATCH
-					else if (item.pace > 0)
-						pace_icon += PACE_ICON[item.pace], pace_text = PACE_TEXT[item.pace]
+					if (item.is_private) game_icon += ICON_PRIVATE
+					if (item.is_match) game_icon += ICON_MATCH
 
 				div(class=className)
 					div.game_head
 						if item.scenario.length <= 2
 							div
-								| !{pace_icon} <a href="/join/#{item.game_id}">##{item.game_id} &#x2013; #{item.title_name} (#{item.scenario})</a> !{chat_icon}
+								| !{game_icon} <a href="/join/#{item.game_id}">##{item.game_id} &#x2013; #{item.title_name} (#{item.scenario})</a> !{chat_icon}
 						else
 							div
-								| !{pace_icon} <a href="/join/#{item.game_id}">##{item.game_id} &#x2013; #{item.title_name}</a> !{chat_icon}
+								| !{game_icon} <a href="/join/#{item.game_id}">##{item.game_id} &#x2013; #{item.title_name}</a> !{chat_icon}
 
 						case item.status
 							when 0
@@ -99,8 +95,6 @@ mixin gamelist(list,hide_title=0)
 										b= item.seed.seed_notice
 							else if item.notice
 								i= item.notice
-							else
-								i= pace_text
 							unless item.is_match
 								if item.scenario !== "Standard" && item.scenario !== "Historical" && item.scenario.length > 2
 									div Scenario: #{item.scenario}

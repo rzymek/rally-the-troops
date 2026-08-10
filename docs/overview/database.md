@@ -81,7 +81,6 @@ The main table holds the status (open/active/finished), setup information (scena
 
 		owner_id integer,
 		notice text,
-		pace integer,
 		is_private boolean,
 		is_random boolean,
 		is_match boolean,

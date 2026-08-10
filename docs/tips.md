@@ -16,7 +16,7 @@ Open a separate browser tab or window for each side when playing solo.
 
 ## Etiquette
 
-For everyone's enjoyment, please respect the pace requests!
+For everyone's enjoyment, please respect the notice requests!
 If someone wants a fast game, don't join if you can only play one move per day.
 
 Timing out in a tournament is very bad!

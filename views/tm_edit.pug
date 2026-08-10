@@ -31,13 +31,6 @@ html(hx-boost="true")
 
 				h2 Timing
 
-				p Pace:
-					br
-					select(name="pace")
-						each text, pace in PACE_TEXT
-							option(value=pace selected=(pace===seed.pace))
-								| #{PACE_ICON[pace]} #{text}
-
 				p Round stagger (number of days between each round start):
 					br
 					input(type="number" name="stagger" value=seed.stagger)

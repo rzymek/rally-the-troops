@@ -224,20 +224,6 @@ app.locals.TM_ICON_TICKET = "\u{1f3ab}"
 app.locals.TM_ICON_ACTIVE = "\u{1f3c3}"
 app.locals.TM_ICON_FINISHED = "\u{1f3c6}"
 
-app.locals.PACE_ICON = [
-	"",		// none
-	"\u{26a1}",	// blitz
-	"\u{1f3c1}",	// fast
-	"\u{1f40c}",	// slow
-]
-
-app.locals.PACE_TEXT = [
-	"Any pace",
-	"Blitz (7+ moves per day)",
-	"Fast (3+ moves per day)",
-	"Slow (1+ moves per day)",
-]
-
 app.locals.human_date = human_date
 app.locals.format_options = format_options
 app.locals.format_minutes = format_minutes
@@ -1582,14 +1568,14 @@ function load_titles() {
 load_titles()
 
 const SQL_INSERT_GAME = SQL(`
-	insert into games (owner_id,title_id,scenario,options,player_count,pace,is_private,is_random,notice)
-	values (?,?,?, ?,?,?, ?,?,?)
+	insert into games (owner_id,title_id,scenario,options,player_count,is_private,is_random,notice)
+	values (?,?,?,?,?,?,?,?)
 	returning game_id
 `).pluck()
 
 const SQL_INSERT_GAME_MATCH = SQL(`
-	insert into games (owner_id,title_id,scenario,options,player_count,pace,is_private,is_random,notice,is_match,ctime,xtime)
-	values (?,?,?, ?,?,?, ?,?,?, 1, datetime(?), datetime(?))
+	insert into games (owner_id,title_id,scenario,options,player_count,is_private,is_random,notice,is_match,ctime,xtime)
+	values (?,?,?,?,?,?,?,?, 1, datetime(?), datetime(?))
 	returning game_id
 `).pluck()
 
@@ -1702,9 +1688,9 @@ const SQL_COUNT_FINISHED_GAMES = SQL(`
 const SQL_SELECT_REMATCH = SQL(`SELECT game_id FROM games WHERE status < ${STATUS_FINISHED} AND notice=?`).pluck()
 const SQL_INSERT_REMATCH = SQL(`
 	insert or ignore into games
-		(owner_id, title_id, scenario, options, player_count, pace, is_private, is_random, notice)
+		(owner_id, title_id, scenario, options, player_count, is_private, is_random, notice)
 	select
-		$owner_id, title_id, scenario, options, player_count, pace, 1, $random, $magic
+		$owner_id, title_id, scenario, options, player_count, 1, $random, $magic
 	from
 		games
 	where
@@ -2059,7 +2045,6 @@ app.get("/create/:title_id", must_be_logged_in, function (req, res) {
 function options_json_replacer(key, value) {
 	if (key === "scenario") return undefined
 	if (key === "notice") return undefined
-	if (key === "pace") return undefined
 	if (key === "is_random") return undefined
 	if (key === "is_private") return undefined
 	if (value === "on") return true
@@ -2088,7 +2073,6 @@ app.post("/create/:title_id", must_be_logged_in, function (req, res) {
 	let title_id = req.params.title_id
 	let priv = req.body.is_private === "true" ? 1 : 0
 	let rand = req.body.is_random === "true" ? 1 : 0
-	let pace = req.body.pace | 0
 	let user_id = req.user.user_id
 	let scenario = req.body.scenario
 	let options = JSON.stringify(req.body, options_json_replacer)
@@ -2106,7 +2090,7 @@ app.post("/create/:title_id", must_be_logged_in, function (req, res) {
 
 	let player_count = get_game_roles(title_id, scenario, options).length
 
-	let game_id = SQL_INSERT_GAME.get(user_id, title_id, scenario, options, player_count, pace, priv, rand, notice)
+	let game_id = SQL_INSERT_GAME.get(user_id, title_id, scenario, options, player_count, priv, rand, notice)
 	res.redirect("/join/" + game_id)
 })
 
@@ -2244,8 +2228,6 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 		icon += app.locals.ICON_PRIVATE
 	if (game.is_match)
 		icon += app.locals.ICON_MATCH
-	if (game.pace)
-		icon += app.locals.PACE_ICON[game.pace]
 
 	res.render("join.pug", {
 		icon,
@@ -3700,7 +3682,6 @@ function create_tournament_game(seed, pool_id, round, pool_name, players) {
 		seed.scenario,
 		seed.options,
 		seed.player_count,
-		seed.pace, // pace
 		0, // is_private
 		0, // is_random
 		pool_name, // notice
@@ -3881,7 +3862,6 @@ const TM_UPDATE_SEED = SQL(`
 		scenario=:scenario,
 		options=:options,
 		player_count=:player_count,
-		pace=:pace,
 		pool_size=:pool_size,
 		match_count=:match_count,
 		is_concurrent=:is_concurrent,
@@ -4002,7 +3982,6 @@ app.post("/tm/edit", must_be_administrator, function (req, res) {
 	seed.is_concurrent |= 0
 	seed.is_open |= 0
 	seed.level_count |= 0
-	seed.pace |= 0
 	seed.stagger = Number(seed.stagger)
 	seed.deadline = Number(seed.deadline)
 	TM_UPDATE_SEED.run(seed)
