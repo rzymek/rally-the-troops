@@ -559,7 +559,7 @@ const SQL_CREATE_TOKEN = SQL("INSERT OR REPLACE INTO tokens (user_id,token,time)
 const SQL_VERIFY_TOKEN = SQL("SELECT EXISTS ( SELECT 1 FROM tokens WHERE user_id=? AND julianday('now') < julianday(time, '+20 minutes') AND token=? )").pluck()
 
 app.use(function (req, res, next) {
-	let ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
+	let ip = req.headers["x-forwarded-for"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
 
 	res.setHeader("Cache-Control", "no-store")
 	let sid = login_cookie(req)
@@ -676,7 +676,7 @@ app.post("/signup", must_pass_altcha, function (req, res) {
 	function err(msg) {
 		res.render("signup.pug", { flash: msg })
 	}
-	let ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
+	let ip = req.headers["x-forwarded-for"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
 	let name = req.body.username
 	let mail = req.body.mail
 	let password = req.body.password
@@ -771,7 +771,7 @@ app.post("/account/password/reset", function (req, res) {
 	let hash = hash_password(password, salt)
 	SQL_UPDATE_USER_PASSWORD.run(user.user_id, hash, salt)
 	SQL_UPDATE_USER_VERIFIED.run(1, user.user_id)
-	var ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
+	var ip = req.headers["x-forwarded-for"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
 	login_insert(res, user.user_id, ip)
 	return res.redirect("/account")
 })
@@ -4499,7 +4499,7 @@ wss.on("connection", (socket, req) => {
 		return setTimeout(() => socket.close(1000, "Invalid request."), 30000)
 	req.searchParams = u.searchParams
 
-	let ip = req.headers["x-real-ip"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
+	let ip = req.headers["x-forwarded-for"] || req.ip || req.connection.remoteAddress || "0.0.0.0"
 
 	let user_id = 0
 	let sid = login_cookie(req)
