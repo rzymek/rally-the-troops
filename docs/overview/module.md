@@ -223,7 +223,7 @@ The view.actions object contains the list of legal actions to present.
 Optional function to implement custom HTML formatting of the prompt text.
 If present, this function must return an HTML _string_.
 
-### function on_log(text)
+### function on_log(text, index)
 
 Optional function to implement custom HTML formatting of log messages.
 If present, this function must return an HTML _element_ representing the given text.

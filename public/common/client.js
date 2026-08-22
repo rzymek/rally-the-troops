@@ -1006,18 +1006,23 @@ function send_action(verb, noun) {
 	if (params.mode === "replay" || params.mode === "debug")
 		return false
 	// Reset action list here so we don't send more than one action per server prompt!
-	if (noun !== undefined) {
-		let realnoun = Array.isArray(noun) ? noun[0] : noun
-		if (view.actions && view.actions[verb] && view.actions[verb].includes(realnoun)) {
-			view.actions = null
-			send_message("action", [ verb, noun, game_cookie ])
-			return true
+	let va = view.actions?.[verb]
+	if (va) {
+		// simple action
+		if (va === 1 || va === true || typeof va === "string") {
+			if (noun === undefined || noun === null || typeof noun === "object") {
+				view.actions = null
+				send_message("action", [ verb, noun, game_cookie ])
+				return true
+			}
 		}
-	} else {
-		if (view.actions && view.actions[verb]) {
-			view.actions = null
-			send_message("action", [ verb, null, game_cookie ])
-			return true
+		// thing action
+		if (Array.isArray(va)) {
+			if (va.includes(noun) || (Array.isArray(noun) && va.includes(noun[0]))) {
+				view.actions = null
+				send_message("action", [ verb, noun, game_cookie ])
+				return true
+			}
 		}
 	}
 	return false

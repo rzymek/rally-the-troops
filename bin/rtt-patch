@@ -73,19 +73,15 @@ function is_changed_active(old_active, new_active) {
 	return String(old_active) !== String(new_active)
 }
 
-function is_valid_action(rules, state, role, action, arg) {
-	if (action === "undo") // for jc, hots, r3, and cr compatibility
-		return true
+function is_valid_action(rules, state, role, verb, noun) {
 	if (!is_role_active(state.active, role))
 		return false
-	let view = rules.view(state, role)
-	let va = view.actions[action]
-	if (va) {
-		if (Array.isArray(va) && va.includes(arg))
-			return true
-		if (arg === undefined || arg === null || arg === 1 || Array.isArray(arg))
-			return (va === 1 || va === true || typeof va === "string")
-	}
+	var view = rules.view(state, role)
+	var va = view.actions[verb]
+	if (va === 1 || va === true || typeof va === "string")
+		return (noun === undefined || noun === null || typeof noun === "object")
+	if (Array.isArray(va))
+		return (va.includes(noun) || (Array.isArray(noun) && va.includes(noun[0])))
 	return false
 }
 
@@ -125,7 +121,7 @@ function finish_game(rules, state, result, message) {
 		state = rules.finish(state, result, message)
 	} else {
 		state.state = "game_over"
-		state.active = "None"
+		state.active = null
 		state.result = result
 		state.victory = message
 		state.log.push("")

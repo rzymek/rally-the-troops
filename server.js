@@ -4190,19 +4190,20 @@ function put_new_state(title_id, game_id, state, old_active, role, action, args,
 	}
 }
 
-function is_valid_action(view_actions, action, args) {
+function is_valid_action(view_actions, verb, noun) {
 	if (!view_actions)
 		return false
-	var va = view_actions[action]
-	if (va) {
-		if (Array.isArray(va) && va.includes(args))
-			return true
-		if (args === undefined || args === null || args === 1)
-			return (va === 1 || va === true || typeof va === "string")
-		// special case for 300 (where it sends additional arguments to an action
-		if (Array.isArray(args) && Array.isArray(va) && va.includes(args[0]))
-			return true
-	}
+
+	var va = view_actions[verb]
+
+	// simple action
+	if (va === 1 || va === true || typeof va === "string")
+		return (noun === undefined || noun === null || typeof noun === "object")
+
+	// thing action
+	if (Array.isArray(va))
+		return (va.includes(noun) || (Array.isArray(noun) && va.includes(noun[0])))
+
 	return false
 }
 
