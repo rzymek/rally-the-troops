@@ -16,6 +16,10 @@ block body
 
 		h1= thread.subject
 
+		if posts.length > 20
+			p
+				a(href="#end") Jump to the end!
+
 		if thread.is_hidden
 			p.box This thread has been removed by a moderator.
 		else if thread.is_locked
@@ -50,6 +54,9 @@ block body
 			if !user.is_muted
 				p
 					a(href="/forum/reply/"+posts[0].post_id) Reply
+
+	if posts.length > 20
+		div#end
 
 	if user.is_moderator
 		fieldset.mod
