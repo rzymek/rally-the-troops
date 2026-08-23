@@ -161,7 +161,7 @@ function update_replay_view() {
 
 	if (viewpoint === "Active") {
 		player = replay_state.active
-		if (player === "All" || player === "Both" || player === "None" || !player)
+		if (!player || player === "None" || player === "Both" || Array.isArray(player))
 			player = "Observer"
 	}
 

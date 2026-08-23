@@ -4008,7 +4008,7 @@ function is_role_active(active, role) {
 }
 
 function is_nobody_active(active) {
-	return !active || active === "None"
+	return active === "None" || active === null
 }
 
 function is_multi_active(active) {
@@ -4296,7 +4296,7 @@ function finish_game_state(title_id, state, result, message) {
 		state = RULES[title_id].finish(state, result, message)
 	} else {
 		state.state = "game_over"
-		state.active = null
+		state.active = "None"
 		state.result = result
 		state.victory = message
 		state.log.push("")
