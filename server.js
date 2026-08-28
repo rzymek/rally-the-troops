@@ -4063,7 +4063,8 @@ function swap_player_roles(socket) {
 
 function send_state(socket, state) {
 	try {
-		let view = RULES[socket.title_id].view(state, socket.role, false)
+		let is_finished = is_nobody_active(state.active)
+		let view = RULES[socket.title_id].view(state, socket.role, is_finished)
 		socket.actions = view.actions // remember actions for validation
 		if (socket.seen < view.log.length)
 			view.log_start = socket.seen
@@ -4076,7 +4077,7 @@ function send_state(socket, state) {
 			socket.send('["state",' + this_view + "," + game_cookies[socket.game_id][socket.role] + "]")
 			socket.last_view = this_view
 		}
-		if (is_nobody_active(state.active)) {
+		if (is_finished) {
 			socket.send('["finished"]')
 		}
 	} catch (error) {
@@ -4626,7 +4627,7 @@ wss.on("connection", (socket, req) => {
 			socket.seen = 0
 		}
 
-		send_state(socket, get_game_state(socket.game_id))
+		send_state(socket, state)
 	} catch (error) {
 		console.log(error)
 		socket.close(1000, error.message)
