@@ -35,6 +35,27 @@ if (WEBHOOKS)
 else
 	console.log("Webhook notifications disabled.")
 
+const RANDOM_ROLES = [
+	"Random 1",
+	"Random 2",
+	"Random 3",
+	"Random 4",
+	"Random 5",
+	"Random 6",
+	"Random 7",
+]
+
+const RANDOM_ROLES_LIST = [
+	null,
+	RANDOM_ROLES.slice(0, 1),
+	RANDOM_ROLES.slice(0, 2),
+	RANDOM_ROLES.slice(0, 3),
+	RANDOM_ROLES.slice(0, 4),
+	RANDOM_ROLES.slice(0, 5),
+	RANDOM_ROLES.slice(0, 6),
+	RANDOM_ROLES.slice(0, 7),
+]
+
 function LOG_STATS() {
 	// Count clients connected to game websockets
 	let num_games = 0
@@ -2140,7 +2161,7 @@ function insert_rematch_players(old_game_id, new_game_id, req_user_id, order) {
 		break
 	case "random":
 		for (let i = 0; i < n; ++i)
-			players[i].role = "Random " + (i + 1)
+			players[i].role = RANDOM_ROLES[i]
 		break
 	}
 
@@ -2206,6 +2227,70 @@ app.post("/rematch/:old_game_id", must_be_logged_in, function (req, res) {
 	return res.redirect("/join/" + new_game_id)
 })
 
+function user_may_join(user, game, players) {
+	if (game.is_match || game.status > 1)
+		return false
+	var has_already_joined = false
+	var has_other_players = false
+	for (let p of players) {
+		if (p.user_id === user.user_id)
+			has_already_joined = true
+		else
+			has_other_players = true
+	}
+	if (has_already_joined) {
+		if (user.user_id !== game.owner_id)
+			return false
+		if (has_other_players)
+			return false
+	}
+	return true
+}
+
+function user_may_part(user, game, players) {
+	if (game.is_match || game.status > 1)
+		return false
+	if (game.status > 0) {
+		if (!game.is_private)
+			return false
+	}
+	return true
+}
+
+function user_may_kick(user, game, players) {
+	if (game.owner_id !== user.user_id)
+		return false
+	return user_may_part(user, game, players)
+}
+
+function user_may_start(user, game, players) {
+	if (game.owner_id !== user.user_id || game.is_match || game.status !== 0)
+		return false
+	if (!game.is_ready)
+		return false
+	return true
+}
+
+function user_may_delete(user, game, players) {
+	if (game.owner_id !== user.user_id || game.is_match)
+		return false
+	if (game.status > 0 && game.user_count > 1)
+		return false
+	return true
+}
+
+function user_may_rewind(user, game, players) {
+	if (game.status === 0 || game.status === 3)
+		return false
+	if (user.is_moderator)
+		return true
+	if (game.owner_id !== user.user_id || game.is_match)
+		return false
+	if (!game.is_private)
+		return false
+	return true
+}
+
 app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 	let game_id = req.params.game_id | 0
 	let game = SQL_SELECT_GAME_VIEW.get(game_id)
@@ -2234,6 +2319,11 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 			rewind = SQL_SELECT_REWIND.all(game_id)
 	}
 
+	game.human_options = format_options(game.options)
+
+	if (game.status === 0 && game.is_random)
+		roles = RANDOM_ROLES_LIST[roles.length]
+
 	let icon = ""
 	if (game.is_private)
 		icon += app.locals.ICON_PRIVATE
@@ -2249,6 +2339,12 @@ app.get("/join/:game_id", must_be_logged_in, function (req, res) {
 		blacklist,
 		friends,
 		limit: req.user ? check_join_game_limit(req.user, 1) : null,
+		may_join: user_may_join(req.user, game, players),
+		may_part: user_may_part(req.user, game, players),
+		may_kick: user_may_kick(req.user, game, players),
+		may_start: user_may_start(req.user, game, players),
+		may_delete: user_may_delete(req.user, game, players),
+		may_rewind: user_may_rewind(req.user, game, players),
 		rewind
 	})
 })

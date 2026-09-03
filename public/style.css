@@ -19,9 +19,6 @@ html {
 	--thin-border: 1px solid black;
 
 	--color-black: black;
-
-	--color-table-active: hsla(55, 100%, 50%, 0.15);
-	--color-table-invite: hsla(120, 100%, 50%, 0.15);
 }
 
 /* light gray */
