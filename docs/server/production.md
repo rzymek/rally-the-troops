@@ -48,35 +48,19 @@ The server reads its settings from the .env file.
 ## Expose the server to the internet
 
 For simplicity, the server only talks plain HTTP on localhost.
-To expose the server to your LAN and/or WAN, either listen to 0.0.0.0 or use a reverse proxy server such as Nginx.
+To expose the server to your LAN and/or WAN, either listen to 0.0.0.0 or use a reverse proxy server such as Caddy.
 To use SSL (HTTPS) you need a reverse proxy server.
 
-Here is an example Nginx configuration:
+Here is an example Caddyfile to serve the files in public and reverse proxy everything else:
 
-	server {
-		listen 80;
-		server_name example.com www.example.com;
-		return 301 https://$host$request_uri;
-	}
-
-	server {
-		listen 443 ssl;
-		server_name example.com www.example.com;
-		ssl_certificate /path/to/ssl/certificate/fullchain.cer;
-		ssl_certificate_key /path/to/ssl/certificate/example.com.key;
-		root /path/to/server/public;
-		location / {
-			try_files $uri @rally;
-		}
-		location @rally {
-			proxy_pass http://127.0.0.1:8080;
-			proxy_http_version 1.1;
-			proxy_set_header Host $host;
-			proxy_set_header X-Real-IP $remote_addr;
-			proxy_set_header Upgrade $http_upgrade;
-			proxy_set_header Connection "upgrade";
-			proxy_read_timeout 86400s;
-			proxy_send_timeout 86400s;
+	example.com {
+		root * /home/NNN/server/public
+		encode zstd gzip
+		route {
+			file_server {
+				pass_thru
+			}
+			reverse_proxy localhost:8080
 		}
 	}
 
