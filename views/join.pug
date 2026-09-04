@@ -66,7 +66,7 @@ html
 							td Created
 					else
 						td Started
-					if game.owner_name
+					if game.owner_id
 						td #{human_date(game.ctime)} by <a href="/user/#{game.owner_name}">#{game.owner_name}</a>
 					else
 						td #{human_date(game.ctime)}
