@@ -1007,7 +1007,7 @@ function confirm_action_button(action, label, message) {
 	action_button_imp(action, label, evt => confirm_send_action(action, undefined, message))
 }
 
-function send_action(verb, noun) {
+function send_action(verb, noun, extra) {
 	if (params.mode === "replay" || params.mode === "debug")
 		return false
 	// Reset action list here so we don't send more than one action per server prompt!
@@ -1017,15 +1017,21 @@ function send_action(verb, noun) {
 		if (va === 1 || va === true || typeof va === "string") {
 			if (noun === undefined || noun === null || typeof noun === "object") {
 				view.actions = null
-				send_message("action", [ verb, noun, game_cookie ])
+				if (extra !== undefined)
+					send_message("action", [ verb, [ noun, ...extra ], game_cookie ])
+				else
+					send_message("action", [ verb, noun, game_cookie ])
 				return true
 			}
 		}
 		// thing action
 		if (Array.isArray(va)) {
-			if (va.includes(noun) || (Array.isArray(noun) && va.includes(noun[0]))) {
+			if (va.includes(noun)) {
 				view.actions = null
-				send_message("action", [ verb, noun, game_cookie ])
+				if (extra !== undefined)
+					send_message("action", [ verb, [ noun, ...extra ], game_cookie ])
+				else
+					send_message("action", [ verb, noun, game_cookie ])
 				return true
 			}
 		}
