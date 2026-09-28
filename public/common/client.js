@@ -922,7 +922,12 @@ function update_log(change_start, end) {
 
 function scroll_log_to_end() {
 	let div = document.getElementById("log")
-	div.scrollTop = div.scrollHeight
+	// NOTE: double request to avoid forced synchronous layout
+	requestAnimationFrame(() =>
+		requestAnimationFrame(() =>
+			div.scrollTop = div.scrollHeight
+		)
+	)
 }
 
 try {
