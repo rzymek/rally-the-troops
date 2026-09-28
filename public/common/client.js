@@ -1360,7 +1360,7 @@ var update_map_size = function (w, h) {}
 
 /* PAN & ZOOM GAME BOARD */
 
-;(function () {
+function init_pan_and_zoom() {
 	var PAN_SPEED = Number(document.querySelector("main").dataset.panSpeed) || 1
 	var MIN_ZOOM = Number(document.querySelector("main").dataset.minZoom) || 0.5
 	var MAX_ZOOM = Number(document.querySelector("main").dataset.maxZoom) || 1.5
@@ -1836,7 +1836,7 @@ var update_map_size = function (w, h) {}
 			update_map_fit()
 		}
 	}
-})()
+}
 
 /* INITIALIZE */
 
@@ -1844,6 +1844,7 @@ if (window.innerWidth <= 800)
 	document.querySelector("aside").hidden = true
 
 window.addEventListener("load", function () {
+	init_pan_and_zoom()
 	if (params.mode === "debug")
 		init_replay()
 	else if (params.mode === "replay")
