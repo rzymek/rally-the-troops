@@ -102,10 +102,12 @@ function emit(output, w, h, dx, dy, lines) {
 	)
 }
 
-function read_png(path, w, h, x=0, y=0) {
+function read_png(path, w, h, x=0, y=0, clip)  {
 	// NOTE: Always use w and h 1 smaller than piece that uses it!
-	// NOTE: Make sure the PNG is transparent as we don't apply any clipping!
+	// NOTE: Make sure the PNG is transparent unless you also pass in a clip path!
 	var data = fs.readFileSync(path).toString("base64")
+	if (clip)
+		return `<clipPath id="c">${clip}</clipPath><image xlink:href="data:image/png;base64,${data}" clip-path="url(#c)" x="${x+.5}" y="${y+.5}" width="${w}" height="${h}"/>`
 	return `<image xlink:href="data:image/png;base64,${data}" x="${x+.5}" y="${y+.5}" width="${w}" height="${h}"/>`
 }
 
