@@ -33,14 +33,10 @@ else
 	for (var game_id of db.prepare("select game_id from games where status>0 and title_id=? and game_id between ? and ?").pluck().all(title_id, first_id, last_id))
 		test_game(game_id)
 
-function is_role_active(active, role) {
-	return active === role || active === "Both" || active.includes(role)
-}
-
 function is_valid_action(rules, state, role, verb, noun) {
-	if (!is_role_active(state.active, role))
-		return false
 	var view = rules.view(state, role)
+	if (!view.actions)
+		return false
 	var va = view.actions[verb]
 	if (va === 1 || va === true || typeof va === "string")
 		return (noun === undefined || noun === null || typeof noun === "object")

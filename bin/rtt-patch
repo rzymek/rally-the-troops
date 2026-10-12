@@ -53,10 +53,6 @@ function snapshot(state) {
 	return snap
 }
 
-function is_role_active(active, role) {
-	return active === role || active === "Both" || active.includes(role)
-}
-
 function is_nobody_active(active) {
 	return !active || active === "None"
 }
@@ -74,9 +70,9 @@ function is_changed_active(old_active, new_active) {
 }
 
 function is_valid_action(rules, state, role, verb, noun) {
-	if (!is_role_active(state.active, role))
-		return false
 	var view = rules.view(state, role)
+	if (!view.actions)
+		return false
 	var va = view.actions[verb]
 	if (va === 1 || va === true || typeof va === "string")
 		return (noun === undefined || noun === null || typeof noun === "object")
