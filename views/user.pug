@@ -27,9 +27,9 @@ html
 			if user && (who.user_id !== user.user_id)
 				if contact
 					p
-						a(href="/message/send/"+who.name) Send message
-						br
 						if contact.relation > 0
+							a(href="/message/send/"+who.name) Send message
+							br
 							a(href="/contacts/remove/"+who.name) Remove from friends
 						if contact.relation < 0
 							a(href="/contacts/remove/"+who.name) Remove from blacklist

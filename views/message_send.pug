@@ -17,6 +17,10 @@ html
 		include header
 		article
 			h1 Send Message
+
+			if flash
+				p.error= flash
+
 			form(method="post" action="/message/send")
 
 				p To:

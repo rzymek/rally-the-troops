@@ -1056,6 +1056,8 @@ const SQL_SELECT_RELATION = SQL("select relation from contacts where me=? and yo
 const SQL_SELECT_CONTACT = SQL("select relation, note from contacts where me=? and you=?")
 const SQL_UPDATE_CONTACT_NOTE = SQL("update contacts set note=? where me=? and you=?")
 
+const SQL_SELECT_IS_BLACKLISTED = SQL("select exists (select 1 from contacts where me=? and you=? and relation<0)").pluck()
+
 app.get("/contacts", must_be_logged_in, function (req, res) {
 	let contacts = SQL_SELECT_CONTACT_LIST.all(req.user.user_id)
 	res.render("contacts_index.pug", {
@@ -1214,6 +1216,17 @@ app.post("/message/send", must_be_verified, function (req, res) {
 			body: body,
 			friends,
 			flash: "Cannot find that user.",
+		})
+	}
+	if (SQL_SELECT_IS_BLACKLISTED.get(req.user.user_id, to_user.user_id)) {
+		let friends = SQL_SELECT_CONTACT_FRIEND_NAMES.all(req.user.user_id)
+		return res.render("message_send.pug", {
+			to_id: 0,
+			to_name: to_name,
+			subject: subject,
+			body: body,
+			friends,
+			flash: "You cannot message that user.",
 		})
 	}
 	let info = MESSAGE_SEND.run(req.user.user_id, to_user.user_id, subject, body)
