@@ -638,6 +638,7 @@ function send_message(cmd, arg) {
 
 function connect_play(is_reconnect) {
 	let protocol = (window.location.protocol === "http:") ? "ws" : "wss"
+	let is_on_init_log_called = false
 
 	load_game_log()
 
@@ -782,6 +783,13 @@ function connect_play(is_reconnect) {
 			// save log first time we connect
 			if (!stored_game_log_length)
 				save_game_log()
+
+			// if client wants to pre-scan the log on first connect
+			if (!is_on_init_log_called) {
+				is_on_init_log_called = true
+				if (typeof on_init_log === "function")
+					on_init_log(game_log)
+			}
 
 			// keep showing current snapshot
 			if (snap_view) {
