@@ -23,10 +23,12 @@ header summary::-webkit-details-marker {
 }
 
 html {
+	-webkit-user-select: none; /* for safari */
 	user-select: none;
 }
 
 #log, #prompt, #chat_text {
+	-webkit-user-select: text; /* for safari */
 	user-select: text;
 }
 
@@ -696,6 +698,7 @@ menu li.disabled:hover img {
 		height: 36px;
 	}
 	#prompt {
+		-webkit-user-select: none; /* for safari */
 		user-select: none;
 	}
 }
