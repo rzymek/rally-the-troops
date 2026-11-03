@@ -158,12 +158,18 @@ function fnv1a_log(log) {
 
 let mailer = null
 if (process.env.MAIL_HOST && process.env.MAIL_PORT && process.env.MAIL_FROM) {
+	const auth = process.env.MAIL_USER
+		? { requireTLS: true, auth: { user: process.env.MAIL_USER, pass: process.env.MAIL_PASS } }
+		: { ignoreTLS: true };
 	mailer = require("nodemailer").createTransport({
 		host: process.env.MAIL_HOST,
 		port: process.env.MAIL_PORT,
-		ignoreTLS: true
+		...auth,
 	})
-	console.log("Mail notifications enabled: ", mailer.options)
+	console.log("Mail notifications enabled:", {
+		...mailer.options,
+		auth: '/* redacted */'
+	})
 } else {
 	console.log("Mail notifications disabled.")
 	if (DEBUG) {

@@ -38,6 +38,9 @@ The server reads its settings from the .env file.
 	MAIL_FROM=Example Notifications <notifications@example.com>
 	MAIL_HOST=localhost
 	MAIL_PORT=25
+	# Optional auth over TLS
+	#MAIL_USER=username
+	#MAIL_PASS='password'
 
 	# Enable webhooks
 	WEBHOOKS=1
