@@ -1,0 +1,38 @@
+//- vim:ts=4:sw=4:
+doctype html
+html
+	head
+		include head
+		title ADMIN: Users
+	body
+		include header
+		article
+
+			h1 ADMIN: Users
+
+			p= users.length + " registered users."
+
+			table.wide.striped
+				thead
+					tr
+						th.r ID
+						th Name
+						th Mail
+						th Flags
+						th First seen
+						th Last seen
+				tbody
+					each item in users
+						tr
+							td.r= item.user_id
+							td
+								a(href="/user/"+item.name)= item.name
+							td= item.mail
+							td
+								| #{item.is_verified ? "verified" : "unverified"}
+								if item.is_moderator
+									|  moderator
+								if item.is_banned
+									|  banned
+							td= item.ctime || "-"
+							td= item.atime || "-"

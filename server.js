@@ -919,6 +919,23 @@ app.get("/admin/timeouts", must_be_moderator, function (req, res) {
 	return res.render("admin_timeouts.pug", { timeouts })
 })
 
+const SQL_SELECT_ADMIN_USERS = SQL(`
+	select
+		user_id, name, mail, is_verified, is_moderator, is_banned,
+		user_first_seen.ctime as ctime,
+		user_last_seen.atime as atime
+	from users
+	left join user_first_seen using(user_id)
+	left join user_last_seen using(user_id)
+	where user_id > 0
+	order by user_id desc
+`)
+
+app.get("/admin/users", must_be_administrator, function (req, res) {
+	let users = SQL_SELECT_ADMIN_USERS.all()
+	return res.render("admin_users.pug", { users })
+})
+
 app.get("/tm/timeouts", must_be_moderator, function (req, res) {
 	let timeouts = TM_SELECT_ADMIN_TIMEOUTS.all()
 	return res.render("tm_timeouts.pug", { timeouts })
